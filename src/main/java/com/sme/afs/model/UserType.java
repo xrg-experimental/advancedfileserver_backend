@@ -1,0 +1,7 @@
+package com.sme.afs.model;                                                                                                                                                                                               
+                                                                                                                                                                                                                          
+ public enum UserType {                                                                                                                                                                                                   
+     INTERNAL,                                                                                                                                                                                                            
+     EXTERNAL,                                                                                                                                                                                                            
+     ADMIN                                                                                                                                                                                                                
+ }

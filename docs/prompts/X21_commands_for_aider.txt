@@ -1,0 +1,66 @@
+/read-only ../docs/AdvancedFileServer_Architecture_Design.md
+/read-only ../docs/AdvancedFileServer_User_Stories.md
+
+/read-only docs/aider-reference.md
+
+/add src/main
+/add pom.xml
+/add docs/AdvancedFileServer_Implementation_backend.md
+
+/architect Implement the server side of User Story 21. Add unit
+tests and append a short documentation of the implementation
+to file docs/AdvancedFileServer_Implementation_backend.md
+
+/ask List the files you want to change or create for implementing
+the server side of User Story 22.
+
+/architect Implement the server side of User Story 22. Add unit
+tests and append a short documentation of the implementation
+to file docs/AdvancedFileServer_Implementation_backend.md
+
+/ask List the files you want to change or create for implementing
+the server side of User Story 23.
+
+/architect Implement the server side of User Story 23. Add unit
+tests and append a short documentation of the implementation
+to file docs/AdvancedFileServer_Implementation_backend.md
+
+/ask List the files you want to change or create for implementing
+the server side of User Story 24
+
+I made the new tests run. Check if something is missing for unit testing User Story 24.
+
+/ask List the files you want to change or create for implementing
+the server side of User Story 25
+
+/architect The design of the AdvancedFileServer has been changed to use Synolgy DSM
+only for administration authentication. Update the AdvancedFileServer_User_Stories.md
+the reflect these changes. Do not modify the numbering from 1 to 25 because these
+numberes have been used as reference before.
+
+/architect Which files would be changed or added to modify the authentication logic
+of the AdvancedFileServer. The first login from the frontend uses /api/login for
+all users. If the user has OTP activated, then an additional login parameter is
+required. The second login from the frontend uses /api/login/otp for all users.
+Administrators must have OTP activated. The credentials of an Administrator are
+send to the Synolgy DSM for authentication.
+
+Write a documentation of the new authentication logic into the file docs/AdvancedFileServer_authentication.md.
+This file shall be used as reference for the frontend developers.
+
+/architect Which files would be changed or added to modify the authentication logic
+of the AdvancedFileServer again. The first login from the frontend uses /api/login
+all users. If the user has OTP activated, then the response is not longer an
+error but the info to redirect to the OTP login page. The second login from the 
+frontend uses an additional login parameter for the OTP. Administrators must have 
+OTP activated. The credentials of an Administrator are send to the Synolgy DSM for 
+authentication.
+
+/architect Which files to you need to see or modify to implement for the following change?
+ 1 Implement a /system/status endpoint on your backend
+ 2 Ensure the endpoint returns a JSON object with:
+    • status: 'Online' | 'Offline' | 'Degraded'
+    • lastChecked: current timestamp
+
+/architect Which files to you need to see or modify to implement for the following change?
+The status of the server is checked every 5 seconds. Therefore I want to supress all debug messages for calls to the /system/status endpoint.

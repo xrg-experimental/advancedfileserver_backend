@@ -1,0 +1,40 @@
+/read-only ../docs/AdvancedFileServer_Architecture_Design.md
+/read-only ../docs/AdvancedFileServer_User_Stories.md
+
+/read-only ../afs-ui/docs/api-docs.json
+
+add src directory with java files, resources and tests
+/add src
+
+/architect For a demo of the implementation I need a database with demo data. 
+Please create an SQL script to fill a database with demo data. You find all
+implemented rest endpoints in file api-docs.json. And I need a short description
+how to use the demo. Write the description to file docs/demo.md.
+
+error while testing -> more log data added
+
+/architect The demo database is initialized. The login test 1 from demo.md failed.
+I found the reason for the "401 Unauthorized" answer. We try to use 
+https://localhost:5001 for authentication in the code. The demo is not running on the real
+Synology NAS, but on a local machine. Please create a new file docs/synology-mock.md 
+with the specification of a mock-server which can be used for the demo. I want
+to use the specification to create a mock-server.
+
+Now asking claude.chat:
+For testing my file server project in demo mode I need mock server described in 
+the attached document. My project is a Java-Spring-Boot application build with maven. 
+Can you present me different approaches for implementing the mock server and give me 
+best practice advise for implementation details?
+file: docs/synology-mock.md
+
+Second question:
+I like the Embedded WireMock approach. Can you collect all relevant information from 
+your answer I need and write them in one document, please. This document shall be a 
+single source for the implementation.
+
+=> synology-mock-server-implementation.md
+
+We are working on the implementation of the mock server. Use synology-mock-server-implementation.md 
+as guideline. Don only the things I am asking for. Start with the Dependencies.
+
+Now the Configuration.

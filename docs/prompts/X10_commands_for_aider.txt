@@ -1,0 +1,57 @@
+/read-only ../docs/AdvancedFileServer_Architecture_Design.md
+/read-only ../docs/AdvancedFileServer_User_Stories.md
+
+added only java files without tests
+created an empty file docs/Step_by_Step_U10.md
+
+/add docs/Step_by_Step_U10.md
+
+/architect Now User Story 10. Please write a list of
+the next steps to take into file docs/Step_by_Step_U10.md.
+Do not start editing code.
+
+-> aider started to write code for the first 2 steps
+-> manually copied the generated list to the file docs/Step_by_Step_U10.md
+
+Create SessionService to handle session tracking
+
+-> manually created new database table: TABLE user_sessions
+
+Implement session creation on successful authentication
+
+-> error in AuthControllerTest.java:81
+
+/read-only errors/loginFailure.txt
+/architect Please fix the error in AuthControllerTest.java:81, see errors/loginFailure.txt.
+
+/drop errors/loginFailure.txt
+Add session validation logic to JwtAuthenticationFilter
+
+-> compile error
+
+...
+
+/read-only errors/loginSuccess.txt
+/architect Please fix the error in AuthControllerTest.java:80, see errors/loginSuccess.txt.
+
+...
+
+-> rate limit exceeded per day
+
+Add unit tests as described in docs\Step_by_Step_U10.md number 7.
+
+-> multiple test errors
+
+Test error in AuthControllerTest.java:169: ...
+
+Test error in shouldCreateNewSession() SessionServiceTest.java:42: 
+
+Test error in shouldInvalidateOldestSessionWhenMaxReached():
+
+Test error in shouldRefreshTokenSuccessfully(): 
+
+Test error in shouldLogoutSuccessfully(): 
+
+/architect add all what is needed for SpringDoc OpenAPI (Swagger UI) to the actual java code base
+
+/architect Add session-specific exception types

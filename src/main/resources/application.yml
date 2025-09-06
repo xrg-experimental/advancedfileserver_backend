@@ -1,0 +1,126 @@
+spring:
+  profiles:
+    active: demo
+  application:
+    name: advanced-file-server
+  datasource:
+    url: jdbc:postgresql://localhost:5432/advancedfileserver
+    username: afs_user
+    #password: ${DB_PASSWORD}
+    password: new_secure_password
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: validate
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  servlet:
+    multipart:
+      max-file-size: 100MB
+      max-request-size: 100MB
+  mail:
+    host: smtp.example.com
+    port: 587
+    username: your-email@example.com
+    password: your-password
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
+server:
+  port: 8080
+  servlet:
+    context-path: /api
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operationsSorter: method
+    tagsSorter: alpha
+    filter: true
+  show-actuator: false
+
+# JWT Configuration
+jwt:
+  secret: your-secret-key-here-should-be-very-long-and-secure
+  expiration: 86400000 # 24 hours in milliseconds
+
+# Session Configuration
+session:
+  timeout: 1800 # 30 minutes in seconds
+  max-concurrent: 3000 # for debugging only
+  cleanup-interval: 300 # 5 minutes in seconds
+  refresh-window: 300 # 5 minutes in seconds before expiration when token can be refreshed
+
+# Synology DSM configuration
+synology:
+  host: localhost
+  port: 5000
+  username: admin
+  password: changeme
+  session-name: FileStation
+  api-version: 2
+  protocol: http
+  verify-ssl: false
+
+# Shared folder configuration for non-demo profiles
+shared-folder:
+  validate-on-startup: true
+  scan-interval-seconds: 300
+
+---
+spring:
+  config:
+    activate:
+      on-profile: demo
+shared-folder:
+  base-paths:
+    - D:/demo/shared
+    - D:/demo/shared2
+  temp-path: D:/demo/temp
+  validate-on-startup: true
+  scan-interval-seconds: 300
+  allow-runtime-updates: true
+  package-owner: ${PACKAGE_OWNER:martinfrei}  # Can be set via environment variable
+  package-owner-full: ${PACKAGE_OWNER_FULL:HERMES2\martinfrei}  # Can be set via environment variable
+  enforce-package-owner: true
+
+---
+spring:
+  config:
+    activate:
+      on-profile: test
+shared-folder:
+  base-path: D:/test/shared
+  temp-path: D:/test/temp
+  validate-on-startup: true
+  scan-interval-seconds: 300
+  allow-runtime-updates: true
+  package-owner: ${PACKAGE_OWNER:martinfrei}  # Can be set via environment variable
+  package-owner-full: ${PACKAGE_OWNER_FULL:HERMES2\martinfrei}  # Can be set via environment variable
+  enforce-package-owner: true
+
+---
+spring:
+  config:
+    activate:
+      on-profile: "!demo & !test"
+shared-folder:
+  base-path: /volume1/shared
+  temp-path: /volume1/shared/temp
+
+logging:
+  level:
+    com.sme.afs: DEBUG
+    org.springframework.security: DEBUG

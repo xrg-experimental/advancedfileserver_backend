@@ -1,0 +1,67 @@
+/read-only ../docs/AdvancedFileServer_Architecture_Design.md
+/read-only ../docs/AdvancedFileServer_authentication.md
+/read-only docs/demo.md
+/read-only docs/Synology-mock.md
+/read-only docs/vfs-spec.md
+/read-only .prompts/p2-generate-REVISED-project-requirements.md
+
+/chat-mode ask
+Review and revise requirements from the given documents with focus on
+the backend using the requirements revision prompt
+
+-> create project_docs/backend-requirements.md
+
+====================
+
+/read-only ../docs/technology-stack.md
+/read-only project_docs/backend-requirements.md
+/read-only .prompts/a1-implementation-analysis-prompt.md
+
+/chat-mode ask
+#analyze-impl
+
+/add src/main/...
+
+-> create project_docs/analysis/implementation_status.md
+
+====================
+
+/read-only project_docs/backend-requirements.md
+/read-only project_docs/analysis/implementation_status.md
+/read-only ../docs/technology-stack.md
+/read-only .prompts/f2-sprint-first-story-generation-prompt.md
+
+/chat-mode ask
+#generate-sprint-first-story
+
+...
+
+-> create project_docs/sprints/sprint_1_stories.md
+
+====================
+
+/read-only ../docs/technology-stack.md
+/read-only project_docs/sprints/sprint_1_stories.md
+/read-only project_docs/analysis/implementation_status.md
+/read-only .prompts/a3-story-analysis-prompt.md
+
+/chat-mode ask
+#analyze-story S1.1
+
+approved
+
+/chat-mode code
+save to file
+
+-> create file project_docs/analysis/S1.1-story-steps.md
+
+====================
+
+/read-only project_docs/sprints/sprint_1_stories.md
+/read-only project_docs/analysis/S1.1-story-steps.md
+/read-only .prompts/a4-implementation-prompt.md
+
+/chat-mode ask
+#implement-step S1.1 1
+
+...

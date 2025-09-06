@@ -1,0 +1,8 @@
+.aider*
+.env
+.idea/
+.prompts/
+*.db
+*.log
+target/
+postgres-data/

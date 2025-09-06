@@ -1,0 +1,18 @@
+/read-only ../docs/AdvancedFileServer_Architecture_Design.md
+/read-only ../docs/AdvancedFileServer_User_Stories.md
+
+added only java files without tests, removed some docs
+
+/architect Now to point 7. of the user stories.
+What are the next steps to do and which files are involved?
+Please make a list of the files so that I can copy them to the context.
+Do not start to write code.
+
+...
+
+Now add tests for point 7. of the user stories.
+
+/add docs\AdvancedFileServer_Implementation_backend.md
+
+Please add a section to docs\AdvancedFileServer_Implementation_backend.md 
+about the recent implementation of point 7. of the user stories.

@@ -1,0 +1,49 @@
+/read-only ../docs/AdvancedFileServer_Architecture_Design.md
+/read-only ../docs/AdvancedFileServer_User_Stories.md
+
+/read-only docs/aider-reference.md
+/read-only docs/demo.md
+/read-only docs/synology-mock.md
+
+/add "all java files"
+/add docs/AdvancedFileServer_Implementation_backend.md
+
+/architect Implement the server side of User Story 11. Add unit
+tests and append a short documentation of the implementation
+to file docs/AdvancedFileServer_Implementation_backend.md
+
+/architect Check if something is missing for implementing the 
+server side of User Story 11. Append a short documentation of 
+the implementation to file docs/AdvancedFileServer_Implementation_backend.md
+
+/architect Implement the server side of User Story 12. Add unit
+tests and append a short documentation of the implementation
+to file docs/AdvancedFileServer_Implementation_backend.md
+
+/add src/main
+
+/architect Implement the server side of User Story 13. No unit tests so far.
+
+/add src/test/resources
+/add src/test/java/com/sme/afs/controller
+/add src/test/java/com/sme/afs/service/UserServiceTest.java
+
+/architect Now Implement unit tests for the server side of User Story 13.
+
+/drop src/test
+/drop src/main
+/model haiku
+
+/architect Which files would be changed or added to implement the server side of User Story 14?
+-> failed tests
+
+/add src/main
+
+/architect Implement the server side of User Story 14. No unit tests so far.
+
+/add pom.xml
+/read-only src/test/resources
+/read-only src/test/java/com/sme/afs/controller
+/add src/test/java/com/sme/afs/service/UserServiceTest.java
+
+/architect Now Implement unit tests for the server side of User Story 15.

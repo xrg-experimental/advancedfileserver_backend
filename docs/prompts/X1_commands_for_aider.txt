@@ -1,0 +1,25 @@
+/read-only ../docs/AdvancedFileServer_Architecture_Design.md
+/read-only ../docs/AdvancedFileServer_User_Stories.md
+
+
+Architect mode
+
+aider --sonnet --architect .
+
+What is needed for the server to migrate from SQLite to PostgreSQL?
+Give me a step-by-step description and list the involved files.
+
+/code Add the summary how to initialize the database to README.md.
+
+/code Create a docker-compose.yaml file for the PostgreSQL. .env shall be
+      used to set the database parameters.
+
+-> .env should not be changed by aider, .gitignore blocks commit
+
+
+===========
+
+added most files to aider context
+
+/architect What are the next steps to create tests for the simple user and 
+group activities? Make a list of the files to be changed.

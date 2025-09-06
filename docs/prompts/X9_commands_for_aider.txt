@@ -1,0 +1,44 @@
+/read-only ../docs/AdvancedFileServer_Architecture_Design.md
+/read-only ../docs/AdvancedFileServer_User_Stories.md
+
+added only java files without tests, removed some docs
+
+/architect Now to point 9. of the user stories.
+What are the next steps to take and which files are involved?
+Please make a list of the files. Do not start to write code.
+
+-> too much in a large step
+
+/architect We need a table "user_roles" and a corresponding 
+class for the "roles" field in class User. Make a list with 
+the next steps to take.
+
+-> test error
+
+File src/main/resources/logback.xml is empty. This lets the
+test run fail.
+
+All tests are running now again. Please add tests to AuthControllerTest.java
+
+-> error: "Schema-validation: missing table [user_roles]"
+
+/architect The new tests and the main app now have an error: 
+"Schema-validation: missing table [user_roles]"
+Show me possible solutions.
+
+-> manually added table user_roles to PostgreSQL
+-> less error but 1 test failed
+
+One test failed: loginInvalidRequest()
+jakarta.servlet.ServletException: Request processing failed: java.lang.NullPointerException: 
+Cannot invoke "org.springframework.security.core.Authentication.getPrincipal()" because "authentication" is null
+
+
+/add docs/AdvancedFileServer_Implementation_backend.md
+/architect Are there any missing implementations or tests for user story 9?
+When we are ready then add a section to docs\AdvancedFileServer_Implementation_backend.md.
+
+-> 2 new tests failed
+
+/architect Test whenAdminAccessAnyEndpoint_thenOk() failed in line 44 with the error message
+I copied to file logs/whenAdminAccessAnyEndpoint_thenOk.txt

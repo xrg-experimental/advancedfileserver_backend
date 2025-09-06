@@ -1,0 +1,71 @@
+/read-only ../docs/AdvancedFileServer_Architecture_Design.md
+/read-only ../docs/AdvancedFileServer_authentication.md
+/read-only ../docs/technology-stack.md
+/read-only docs/demo.md
+/read-only docs/Synology-mock.md
+/read-only docs/vfs-spec.md
+/read-only project_docs/backend-requirements.md
+/read-only project_docs/sprints/sprint_1_stories.md
+/read-only .prompts/a1-implementation-analysis-prompt.md
+
+/add src\main\java\com\sme\afs\controller\
+/add src\main\java\com\sme\afs\security\
+
+/chat-mode ask
+#analyze-impl-status
+
+#analyze-impl
+/chat-mode code
+
+-> create project_docs/analysis/implementation_status.md
+
+==================== HAIKU ====================
+
+/read-only project_docs/backend-requirements.md
+/read-only project_docs/analysis/implementation_status.md
+/read-only ../docs/technology-stack.md
+/read-only .prompts/a2-sprint-story-generation-prompt.md
+
+/chat-mode ask
+#generate-sprint-stories
+
+...
+
+-> create project_docs/sprints/sprint_2_stories.md
+
+====================
+
+/read-only ../docs/technology-stack.md
+/read-only project_docs/analysis/implementation_status.md
+/read-only project_docs/sprints/sprint_2_stories.md
+/read-only .prompts/a3-story-analysis-prompt.md
+
+/chat-mode ask
+#analyze-story S2.1
+
+approved
+
+/chat-mode code
+save to file
+
+-> create file project_docs/analysis/S2.1-story-steps.md
+
+====================
+
+/read-only project_docs/sprints/sprint_2_stories.md
+/read-only project_docs/analysis/S2.1-story-steps.md
+/read-only .prompts/a4-implementation-prompt.md
+
+/chat-mode ask
+#implement-step S2.1 1
+
+/add pom.xml
+
+...
+
+/chat-mode ask
+#implement-step S2.1 2
+
+...
+
+-> Story S2.1 Implementation: COMPLETE ✅
