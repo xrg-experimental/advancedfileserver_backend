@@ -94,7 +94,7 @@ shared-folder:
   allow-runtime-updates: true
   package-owner: ${PACKAGE_OWNER:martinfrei}  # Can be set via environment variable
   package-owner-full: ${PACKAGE_OWNER_FULL:HERMES2\martinfrei}  # Can be set via environment variable
-  enforce-package-owner: true
+  enforce-package-owner: false
 
 ---
 spring:
@@ -107,8 +107,8 @@ shared-folder:
   validate-on-startup: true
   scan-interval-seconds: 300
   allow-runtime-updates: true
-  package-owner: ${PACKAGE_OWNER:martinfrei}  # Can be set via environment variable
-  package-owner-full: ${PACKAGE_OWNER_FULL:HERMES2\martinfrei}  # Can be set via environment variable
+  package-owner: ${PACKAGE_OWNER:OleEngel}  # Can be set via environment variable
+  package-owner-full: ${PACKAGE_OWNER_FULL:HERMES2\OleEngel}  # Can be set via environment variable
   enforce-package-owner: true
 
 ---
