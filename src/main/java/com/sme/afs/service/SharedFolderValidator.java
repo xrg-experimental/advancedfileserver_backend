@@ -89,7 +89,7 @@ public class SharedFolderValidator {
             }
 
             try (var listing = Files.list(normalizedPath)) {
-                listing.findFirst(); // touch listing to assert access
+                var ignore = listing.findFirst(); // touch listing to assert access
                 validation.setValid(true);
             } catch (SecurityException e) {
                 validation.setValid(false);
