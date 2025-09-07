@@ -30,134 +30,23 @@ public class SharedFolderConfigService {
     private final SharedFolderProperties properties;
 
     @Transactional
-    public void initializeFromProperties(User systemUser) {
-        try {
-            // Pre-validate configuration
-            validator.validateConfiguration();
-            
-            // Begin transaction for configuration updates
-            configRepository.findByIsBasePath(true).forEach(config -> {
-                config.setBasePath(false);
-                configRepository.save(config);
-            });
-
-            configRepository.findByIsTempPath(true).ifPresent(config -> {
-                config.setTempPath(false);
-                configRepository.save(config);
-            });
-
-            // Add base paths from properties
-            for (String path : properties.getBasePaths()) {
-                createOrUpdateConfig(path, true, false, systemUser);
-            }
-
-            // Add temp path from properties if configured
-            String tempPath = properties.getTempPath();
-            if (tempPath != null && !tempPath.isEmpty()) {
-                createOrUpdateConfig(tempPath, false, true, systemUser);
-            }
-
-            // Final validation of saved configuration
-            validator.validateConfiguration();
-            
-            log.info("Successfully initialized {} base paths and temp path configuration", 
-                properties.getBasePaths().size());
-                
-        } catch (Exception e) {
-            log.error("Failed to initialize configuration from properties", e);
-            throw new AfsException(ErrorCode.INTERNAL_ERROR,
-                    "Failed to initialize configuration", e);
-        }
-    }
-
-    @Transactional(readOnly = true)
-    public void validateAllConfigurations() {
-        List<SharedFolderConfig> configs = configRepository.findAll();
-        List<String> errors = new ArrayList<>();
-        
-        for (SharedFolderConfig config : configs) {
-            try {
-                validator.validatePath(config.getPath(), 
-                    config.isBasePath() ? "Base path" : "Temp path");
-            } catch (AfsException e) {
-                errors.add(String.format("Invalid path %s: %s", 
-                    config.getPath(), e.getMessage()));
-            }
-        }
-        
-        if (!errors.isEmpty()) {
-            throw new AfsException(ErrorCode.VALIDATION_FAILED,
-                "Configuration validation failed:\n" + String.join("\n", errors));
-        }
-    }
-
-    @Transactional
-    public SharedFolderConfig createOrUpdateConfig(String path, boolean isBasePath, boolean isTempPath, User user) {
-        // Normalize path before validation
+    public SharedFolderConfig createOrUpdateConfig(String path, User user) {
+        // Normalize the path before validation
         Path normalizedPath = Path.of(path).normalize().toAbsolutePath();
         String normalizedPathStr = normalizedPath.toString();
 
-        // Validate path uniqueness
         Optional<SharedFolderConfig> existing = configRepository.findByPath(normalizedPathStr);
-        if (existing.isPresent()) {
-            SharedFolderConfig existingConfig = existing.get();
-            if (existingConfig.isBasePath() != isBasePath || existingConfig.isTempPath() != isTempPath) {
-                throw new AfsException(ErrorCode.VALIDATION_FAILED,
-                    "Path already exists with different type: " + normalizedPathStr);
-            }
-        }
-
-        // Validate path type conflicts
-        if (isBasePath && isTempPath) {
-            throw new AfsException(ErrorCode.VALIDATION_FAILED,
-                "Path cannot be both base path and temp path");
-        }
-
-        // Check temp path uniqueness and conflicts
-        if (isTempPath) {
-            Optional<SharedFolderConfig> existingTemp = configRepository.findByIsTempPath(true);
-            if (existingTemp.isPresent() && !existingTemp.get().getPath().equals(normalizedPathStr)) {
-                throw new AfsException(ErrorCode.VALIDATION_FAILED,
-                    "Another temp path already exists: " + existingTemp.get().getPath());
-            }
-        }
-
-        // Validate temp path is not under any base path
-        if (isTempPath) {
-            List<SharedFolderConfig> basePaths = configRepository.findByIsBasePath(true);
-            for (SharedFolderConfig baseConfig : basePaths) {
-                if (normalizedPathStr.startsWith(baseConfig.getPath())) {
-                    throw new AfsException(ErrorCode.VALIDATION_FAILED,
-                        "Temp path cannot be under a base path: " + baseConfig.getPath());
-                }
-            }
-        }
-
-        // Validate base paths don't contain each other
-        if (isBasePath) {
-            List<SharedFolderConfig> basePaths = configRepository.findByIsBasePath(true);
-            for (SharedFolderConfig baseConfig : basePaths) {
-                if (normalizedPathStr.startsWith(baseConfig.getPath()) || 
-                    baseConfig.getPath().startsWith(normalizedPathStr)) {
-                    throw new AfsException(ErrorCode.VALIDATION_FAILED,
-                        "Base paths cannot contain each other: " + baseConfig.getPath());
-                }
-            }
-        }
-
         SharedFolderConfig config = existing.orElse(new SharedFolderConfig());
 
-        config.setPath(path);
-        config.setBasePath(isBasePath);
-        config.setTempPath(isTempPath);
-        
+        config.setPath(normalizedPathStr);
+
         LocalDateTime now = LocalDateTime.now();
-        
+
         if (config.getId() == null) {
             config.setCreatedAt(now);
             config.setCreatedBy(user);
         }
-        
+
         config.setModifiedAt(now);
         config.setModifiedBy(user);
 
@@ -166,13 +55,13 @@ public class SharedFolderConfigService {
         // Create or update validation status
         SharedFolderValidation validation = validationRepository.findByConfigId(config.getId())
             .orElse(new SharedFolderValidation());
-        
+
         validation.setConfig(config);
         validation.setLastCheckedAt(now);
         validation.setCheckedBy(user);
-        
+
         try {
-            SharedFolderValidation pathValidation = validator.validatePath(path, isBasePath ? "Base path" : "Temp path");
+            SharedFolderValidation pathValidation = validator.validatePath(normalizedPathStr);
             validation.setValid(pathValidation.isValid());
             validation.setErrorMessage(pathValidation.getErrorMessage());
             validation.setCanRead(pathValidation.getCanRead());
@@ -186,7 +75,7 @@ public class SharedFolderConfigService {
         }
 
         validationRepository.save(validation);
-        
+
         return config;
     }
 
@@ -194,12 +83,101 @@ public class SharedFolderConfigService {
         return configRepository.findAll();
     }
 
-    public List<SharedFolderConfig> getBasePaths() {
-        return configRepository.findByIsBasePath(true);
+    @Transactional
+    public void initializeFromProperties(User systemUser) {
+        try {
+            // Pre-validate configuration
+            validator.validateConfiguration();
+
+            // Add the base path from properties
+            String basePath = properties.getBasePath();
+            if (basePath != null && !basePath.isEmpty()) {
+                createOrUpdateConfig(basePath, systemUser);
+            }
+
+            // Final validation of saved configuration
+            validator.validateConfiguration();
+
+        } catch (Exception e) {
+            log.error("Failed to initialize configuration from properties", e);
+            throw new AfsException(ErrorCode.INTERNAL_ERROR,
+                    "Failed to initialize configuration", e);
+        }
     }
 
-    public SharedFolderConfig getTempPath() {
-        return configRepository.findByIsTempPath(true)
-            .orElseThrow(() -> new AfsException(ErrorCode.NOT_FOUND, "No temp path configured"));
+    @Transactional
+    public List<SharedFolderValidation> revalidateAll() {
+        log.info("Starting revalidation of all shared folder configurations");
+
+        List<SharedFolderConfig> allConfigs = configRepository.findAll();
+        log.info("Found {} configurations to revalidate", allConfigs.size());
+
+        int successCount = 0;
+        int errorCount = 0;
+
+        List<SharedFolderValidation> validations = new ArrayList<>();
+        for (SharedFolderConfig config : allConfigs) {
+            try {
+                log.debug("Revalidating configuration with path: {}", config.getPath());
+                SharedFolderValidation fresh = validator.validatePath(config.getPath());
+
+                SharedFolderValidation entity = validationRepository.findByConfigId(config.getId())
+                    .orElse(new SharedFolderValidation());
+                entity.setConfig(config);
+                entity.setLastCheckedAt(LocalDateTime.now());
+                entity.setCheckedBy(
+                    Optional.ofNullable(config.getModifiedBy())
+                            .orElse(config.getCreatedBy())
+                );
+                entity.setValid(fresh.isValid());
+                entity.setErrorMessage(fresh.getErrorMessage());
+                entity.setCanRead(fresh.getCanRead());
+                entity.setCanWrite(fresh.getCanWrite());
+                entity.setCanExecute(fresh.getCanExecute());
+                entity.setPermissionCheckError(fresh.getPermissionCheckError());
+
+                validationRepository.save(entity);
+                validations.add(entity);
+
+                if (entity.isValid()) {
+                    successCount++;
+                } else {
+                    errorCount++;
+                    log.warn(
+                        "Validation failed for configuration {}: {}", 
+                        config.getPath(), 
+                        entity.getErrorMessage()
+                    );
+                }
+            } catch (Exception e) {
+                errorCount++;
+                log.error(
+                    "Error during revalidation of configuration {}: {}", 
+                    config.getPath(), 
+                    e.getMessage(), 
+                    e
+                );
+
+                SharedFolderValidation entity = validationRepository.findByConfigId(config.getId())
+                    .orElse(new SharedFolderValidation());
+                entity.setConfig(config);
+                entity.setLastCheckedAt(LocalDateTime.now());
+                entity.setCheckedBy(
+                    Optional.ofNullable(config.getModifiedBy())
+                            .orElse(config.getCreatedBy())
+                );
+                entity.setValid(false);
+                entity.setErrorMessage("Validation error: " + e.getMessage());
+
+                validationRepository.save(entity);
+                validations.add(entity);
+            }
+        }
+
+        log.info(
+            "Revalidation completed. Success: {}, Errors: {}, Total: {}",
+            successCount, errorCount, allConfigs.size()
+        );
+        return validations;
     }
 }

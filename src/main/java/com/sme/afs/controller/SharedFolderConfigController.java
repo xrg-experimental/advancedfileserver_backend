@@ -36,17 +36,6 @@ public class SharedFolderConfigController {
         return ResponseEntity.ok(SharedFolderConfigResponse.of(configs));
     }
 
-    @GetMapping("/base-paths")
-    public ResponseEntity<SharedFolderConfigResponse> getBasePaths() {
-        List<SharedFolderConfig> basePaths = configService.getBasePaths();
-        return ResponseEntity.ok(SharedFolderConfigResponse.of(basePaths));
-    }
-
-    @GetMapping("/temp-path")
-    public ResponseEntity<SharedFolderConfigResponse> getTempPath() {
-        return ResponseEntity.ok(SharedFolderConfigResponse.of(configService.getTempPath()));
-    }
-
     @PostMapping("/initialize")
     public ResponseEntity<SharedFolderConfigResponse> initializeFromProperties(@AuthenticationPrincipal User user) {
         configService.initializeFromProperties(user);
@@ -60,10 +49,11 @@ public class SharedFolderConfigController {
         // Check if any validations are stale
         LocalDateTime staleThreshold = LocalDateTime.now().minusMinutes(5);
         boolean hasStaleValidations = validations.stream()
-            .anyMatch(v -> v.getLastCheckedAt().isBefore(staleThreshold));
-            
+                .anyMatch(v -> v.getLastCheckedAt() == null || v.getLastCheckedAt().isBefore(staleThreshold));
+
         if (hasStaleValidations) {
-            validator.validateConfiguration();
+            // Revalidate and then return freshly persisted rows
+            configService.revalidateAll();
             validations = validationRepository.findAll();
         }
         
@@ -112,12 +102,10 @@ public class SharedFolderConfigController {
     public ResponseEntity<SharedFolderConfigResponse> createConfig(
             @Valid @RequestBody SharedFolderConfigRequest request,
             @AuthenticationPrincipal User user) {
-        
+
         SharedFolderConfig config = configService.createOrUpdateConfig(
-            request.getPath(), 
-            request.getIsBasePath(), 
-            request.getIsTempPath(), 
-            user
+                request.getPath() != null ? request.getPath().trim() : null,
+                user
         );
         return ResponseEntity.ok(SharedFolderConfigResponse.of(config));
     }

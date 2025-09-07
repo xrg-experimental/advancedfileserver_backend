@@ -18,12 +18,6 @@ public class SharedFolderConfig {
     private String path;
 
     @Column(nullable = false)
-    private boolean isBasePath = false;
-
-    @Column(nullable = false)
-    private boolean isTempPath = false;
-
-    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     @Column(nullable = false)

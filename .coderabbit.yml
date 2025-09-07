@@ -1,0 +1,30 @@
+# CodeRabbit configuration
+language: en-US  # Review language
+reviews:
+    profile: chill  # or "assertive" for more detailed feedback
+    high_level_summary: true
+    poem: false
+    review_status: false
+    auto_review:
+        enabled: true
+        drafts: false  # Don't review draft MRs
+    path_filters:
+        - "src/**"           # Include source code
+        - "user-docs/**"     # Include documentation for the users
+        - ".git*"            # Include .gitattributes and .gitignore
+        - "pom.xml"          # Include Maven configuration
+        - "README.m"         # Include main README
+        - "!docs/old/**"     # Exclude old plans and prompts
+        - "!docs/prompts/**" # Exclude prompts
+        - "!logs/**"         # Exclude log files
+        - "!target/**"       # Exclude build directories
+# also catch leading-dot CI files at repo root
+        - ".gitlab-ci.yml"
+    path_instructions:
+        - path: "**/*.java"
+          instructions: "Focus on understandable code and security best practices"
+    tools:
+        yamllint:
+            enabled: false
+        markdownlint:
+            enabled: false
