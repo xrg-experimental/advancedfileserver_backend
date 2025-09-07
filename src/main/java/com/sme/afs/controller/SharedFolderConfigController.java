@@ -49,11 +49,11 @@ public class SharedFolderConfigController {
         // Check if any validations are stale
         LocalDateTime staleThreshold = LocalDateTime.now().minusMinutes(5);
         boolean hasStaleValidations = validations.stream()
-            .anyMatch(v -> v.getLastCheckedAt().isBefore(staleThreshold));
-            
+                .anyMatch(v -> v.getLastCheckedAt() == null || v.getLastCheckedAt().isBefore(staleThreshold));
+
         if (hasStaleValidations) {
-            validator.validateConfiguration();
-            validations = validationRepository.findAll();
+            // Revalidate and persist, then return fresh rows
+            validations = configService.revalidateAll();
         }
         
         return ResponseEntity.ok(SharedFolderConfigResponse.ofValidations(validations));
