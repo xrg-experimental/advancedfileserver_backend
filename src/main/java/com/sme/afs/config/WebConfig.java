@@ -1,9 +1,11 @@
 package com.sme.afs.config;
 
 import com.sme.afs.web.CorrelationIdFilter;
+import jakarta.servlet.DispatcherType;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.Ordered;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
@@ -17,7 +19,7 @@ public class WebConfig implements WebMvcConfigurer {
                 .allowedOrigins("http://localhost:4200") // Angular dev server
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                 .allowedHeaders("*")
-                .exposedHeaders("Authorization")
+                .exposedHeaders("Authorization", "X-Correlation-Id")
                 .allowCredentials(true)
                 .maxAge(3600);
     }
