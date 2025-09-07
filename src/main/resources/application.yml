@@ -85,10 +85,7 @@ spring:
     activate:
       on-profile: demo
 shared-folder:
-  base-paths:
-    - D:/demo/shared
-    - D:/demo/shared2
-  temp-path: D:/demo/temp
+  base-path: D:/demo/shared
   validate-on-startup: true
   scan-interval-seconds: 300
   allow-runtime-updates: true
@@ -103,7 +100,6 @@ spring:
       on-profile: test
 shared-folder:
   base-path: D:/test/shared
-  temp-path: D:/test/temp
   validate-on-startup: true
   scan-interval-seconds: 300
   allow-runtime-updates: true
@@ -118,7 +114,6 @@ spring:
       on-profile: "!demo & !test"
 shared-folder:
   base-path: /volume1/shared
-  temp-path: /volume1/shared/temp
 
 logging:
   level:

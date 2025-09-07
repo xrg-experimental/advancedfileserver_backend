@@ -36,32 +36,18 @@ public class SharedFolderConfigService {
             validator.validateConfiguration();
             
             // Begin transaction for configuration updates
-            configRepository.findByIsBasePath(true).forEach(config -> {
-                config.setBasePath(false);
-                configRepository.save(config);
-            });
+            configRepository.save(configRepository.findByIsBasePath(true).orElseThrow(() -> new AfsException(ErrorCode.NOT_FOUND, "Base path not found")));
 
-            configRepository.findByIsTempPath(true).ifPresent(config -> {
-                config.setTempPath(false);
-                configRepository.save(config);
-            });
-
-            // Add base paths from properties
-            for (String path : properties.getBasePaths()) {
-                createOrUpdateConfig(path, true, false, systemUser);
-            }
-
-            // Add temp path from properties if configured
-            String tempPath = properties.getTempPath();
-            if (tempPath != null && !tempPath.isEmpty()) {
-                createOrUpdateConfig(tempPath, false, true, systemUser);
+            // Add the base path from properties
+            String basePath = properties.getBasePath();
+            if (basePath != null && !basePath.isEmpty()) {
+                createOrUpdateConfig(basePath, systemUser);
             }
 
             // Final validation of saved configuration
             validator.validateConfiguration();
             
-            log.info("Successfully initialized {} base paths and temp path configuration", 
-                properties.getBasePaths().size());
+            log.info("Successfully initialized base path configuration");
                 
         } catch (Exception e) {
             log.error("Failed to initialize configuration from properties", e);
@@ -77,8 +63,7 @@ public class SharedFolderConfigService {
         
         for (SharedFolderConfig config : configs) {
             try {
-                validator.validatePath(config.getPath(), 
-                    config.isBasePath() ? "Base path" : "Temp path");
+                validator.validatePath(config.getPath());
             } catch (AfsException e) {
                 errors.add(String.format("Invalid path %s: %s", 
                     config.getPath(), e.getMessage()));
@@ -92,65 +77,27 @@ public class SharedFolderConfigService {
     }
 
     @Transactional
-    public SharedFolderConfig createOrUpdateConfig(String path, boolean isBasePath, boolean isTempPath, User user) {
-        // Normalize path before validation
+    public SharedFolderConfig createOrUpdateConfig(String path, User user) {
+        // Normalize the path before validation
         Path normalizedPath = Path.of(path).normalize().toAbsolutePath();
         String normalizedPathStr = normalizedPath.toString();
 
-        // Validate path uniqueness
+        // Validate base path uniqueness - only one base path is allowed
+        Optional<SharedFolderConfig> basePath = configRepository.findByIsBasePath(true);
+        if (basePath.isPresent()) {
+            var baseConfig = basePath.get();
+            if (normalizedPathStr.startsWith(baseConfig.getPath()) ||
+                baseConfig.getPath().startsWith(normalizedPathStr)) {
+                throw new AfsException(ErrorCode.VALIDATION_FAILED,
+                    "Base paths cannot contain each other: " + baseConfig.getPath());
+            }
+        }
+
         Optional<SharedFolderConfig> existing = configRepository.findByPath(normalizedPathStr);
-        if (existing.isPresent()) {
-            SharedFolderConfig existingConfig = existing.get();
-            if (existingConfig.isBasePath() != isBasePath || existingConfig.isTempPath() != isTempPath) {
-                throw new AfsException(ErrorCode.VALIDATION_FAILED,
-                    "Path already exists with different type: " + normalizedPathStr);
-            }
-        }
-
-        // Validate path type conflicts
-        if (isBasePath && isTempPath) {
-            throw new AfsException(ErrorCode.VALIDATION_FAILED,
-                "Path cannot be both base path and temp path");
-        }
-
-        // Check temp path uniqueness and conflicts
-        if (isTempPath) {
-            Optional<SharedFolderConfig> existingTemp = configRepository.findByIsTempPath(true);
-            if (existingTemp.isPresent() && !existingTemp.get().getPath().equals(normalizedPathStr)) {
-                throw new AfsException(ErrorCode.VALIDATION_FAILED,
-                    "Another temp path already exists: " + existingTemp.get().getPath());
-            }
-        }
-
-        // Validate temp path is not under any base path
-        if (isTempPath) {
-            List<SharedFolderConfig> basePaths = configRepository.findByIsBasePath(true);
-            for (SharedFolderConfig baseConfig : basePaths) {
-                if (normalizedPathStr.startsWith(baseConfig.getPath())) {
-                    throw new AfsException(ErrorCode.VALIDATION_FAILED,
-                        "Temp path cannot be under a base path: " + baseConfig.getPath());
-                }
-            }
-        }
-
-        // Validate base paths don't contain each other
-        if (isBasePath) {
-            List<SharedFolderConfig> basePaths = configRepository.findByIsBasePath(true);
-            for (SharedFolderConfig baseConfig : basePaths) {
-                if (normalizedPathStr.startsWith(baseConfig.getPath()) || 
-                    baseConfig.getPath().startsWith(normalizedPathStr)) {
-                    throw new AfsException(ErrorCode.VALIDATION_FAILED,
-                        "Base paths cannot contain each other: " + baseConfig.getPath());
-                }
-            }
-        }
-
         SharedFolderConfig config = existing.orElse(new SharedFolderConfig());
 
         config.setPath(path);
-        config.setBasePath(isBasePath);
-        config.setTempPath(isTempPath);
-        
+
         LocalDateTime now = LocalDateTime.now();
         
         if (config.getId() == null) {
@@ -172,7 +119,7 @@ public class SharedFolderConfigService {
         validation.setCheckedBy(user);
         
         try {
-            SharedFolderValidation pathValidation = validator.validatePath(path, isBasePath ? "Base path" : "Temp path");
+            SharedFolderValidation pathValidation = validator.validatePath(path);
             validation.setValid(pathValidation.isValid());
             validation.setErrorMessage(pathValidation.getErrorMessage());
             validation.setCanRead(pathValidation.getCanRead());
@@ -192,14 +139,5 @@ public class SharedFolderConfigService {
 
     public List<SharedFolderConfig> getAllConfigs() {
         return configRepository.findAll();
-    }
-
-    public List<SharedFolderConfig> getBasePaths() {
-        return configRepository.findByIsBasePath(true);
-    }
-
-    public SharedFolderConfig getTempPath() {
-        return configRepository.findByIsTempPath(true)
-            .orElseThrow(() -> new AfsException(ErrorCode.NOT_FOUND, "No temp path configured"));
     }
 }

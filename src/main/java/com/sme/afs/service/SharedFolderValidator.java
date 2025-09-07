@@ -16,7 +16,6 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.UserPrincipal;
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Set;
 
 @Slf4j
@@ -42,8 +41,9 @@ public class SharedFolderValidator {
                     configuredOwner, currentUser));
         }
 
-        // Validate each base path is accessible by package owner
-        for (String path : properties.getBasePaths()) {
+        // Validate the base path is accessible by package owner
+        if (!properties.getBasePath().isEmpty()) {
+            String path = properties.getBasePath();
             Path basePath = Path.of(path);
             try {
                 UserPrincipal owner = Files.getOwner(basePath);
@@ -94,57 +94,11 @@ public class SharedFolderValidator {
         // Validate package owner first
         validatePackageOwner();
 
-        List<String> basePaths = getBasePaths();
-
-        // Validate each base path
-        basePaths.forEach(path -> {
-            validatePath(path, "Base path");
-            if (properties.isCreateMissingDirectories()) {
-                validateRequiredStructure(path);
-            }
-        });
-
-        // Validate temp path if configured
-        String tempPath = properties.getTempPath();
-        if (tempPath != null && !tempPath.isEmpty()) {
-            validatePath(tempPath, "Temp path");
-            
-            // Ensure the temp path is not under any base path
-            Path normalizedTempPath = Path.of(tempPath).normalize();
-            for (String basePath : basePaths) {
-                Path normalizedBasePath = Path.of(basePath).normalize();
-                if (normalizedTempPath.startsWith(normalizedBasePath)) {
-                    throw new AfsException(ErrorCode.VALIDATION_FAILED,
-                        "Temp path cannot be under a base path: " + tempPath);
-                }
-            }
+        // Validate the base path
+        validatePath(properties.getBasePath());
+        if (properties.isCreateMissingDirectories()) {
+            validateRequiredStructure(properties.getBasePath());
         }
-    }
-
-    private List<String> getBasePaths() {
-        List<String> basePaths = properties.getBasePaths();
-        if (basePaths.size() < properties.getMinBasePaths()) {
-            throw new AfsException(ErrorCode.VALIDATION_FAILED,
-                String.format("At least %d base path(s) must be configured", properties.getMinBasePaths()));
-        }
-
-        if (basePaths.size() > properties.getMaxBasePaths()) {
-            throw new AfsException(ErrorCode.VALIDATION_FAILED,
-                String.format("Maximum number of base paths (%d) exceeded", properties.getMaxBasePaths()));
-        }
-
-        // Validate base paths don't overlap
-        for (int i = 0; i < basePaths.size(); i++) {
-            Path basePath = Path.of(basePaths.get(i)).normalize();
-            for (int j = i + 1; j < basePaths.size(); j++) {
-                Path otherPath = Path.of(basePaths.get(j)).normalize();
-                if (basePath.startsWith(otherPath) || otherPath.startsWith(basePath)) {
-                    throw new AfsException(ErrorCode.VALIDATION_FAILED,
-                        "Base paths cannot overlap: " + basePath + " and " + otherPath);
-                }
-            }
-        }
-        return basePaths;
     }
 
     private void validateRequiredStructure(String basePath) {
@@ -181,9 +135,9 @@ public class SharedFolderValidator {
         }
     }
 
-    public SharedFolderValidation validatePath(String path, String pathType) {
+    public SharedFolderValidation validatePath(String path) {
         if (path == null || path.trim().isEmpty()) {
-            throw new AfsException(ErrorCode.VALIDATION_FAILED, pathType + " cannot be empty");
+            throw new AfsException(ErrorCode.VALIDATION_FAILED, "path cannot be empty");
         }
 
         Path resolvedPath = Path.of(path);
@@ -200,45 +154,45 @@ public class SharedFolderValidator {
 
             // Existence check
             if (!Files.exists(normalizedPath)) {
-                throw new AfsException(ErrorCode.NOT_FOUND, pathType + " does not exist: " + normalizedPath);
+                throw new AfsException(ErrorCode.NOT_FOUND, "path does not exist: " + normalizedPath);
             }
 
             // Directory check
             if (!Files.isDirectory(normalizedPath)) {
-                throw new AfsException(ErrorCode.VALIDATION_FAILED, pathType + " must be a directory");
+                throw new AfsException(ErrorCode.VALIDATION_FAILED, "path must be a directory");
             }
 
             // Permission checks
             if (!Files.isReadable(normalizedPath)) {
-                throw new AfsException(ErrorCode.ACCESS_DENIED, pathType + " is not readable");
+                throw new AfsException(ErrorCode.ACCESS_DENIED, "path is not readable");
             }
             
             if (!Files.isWritable(normalizedPath)) {
-                throw new AfsException(ErrorCode.ACCESS_DENIED, pathType + " is not writable");
+                throw new AfsException(ErrorCode.ACCESS_DENIED, "path is not writable");
             }
             
             if (!Files.isExecutable(normalizedPath)) {
-                throw new AfsException(ErrorCode.ACCESS_DENIED, pathType + " is not accessible");
+                throw new AfsException(ErrorCode.ACCESS_DENIED, "path is not accessible");
             }
 
             // Verify we can list contents
             try {
                 Files.list(normalizedPath).close();
             } catch (SecurityException e) {
-                throw new AfsException(ErrorCode.ACCESS_DENIED, pathType + " directory listing denied");
+                throw new AfsException(ErrorCode.ACCESS_DENIED, "path directory listing denied");
             }
         } catch (SecurityException e) {
             throw new AfsException(ErrorCode.ACCESS_DENIED,
-                "Security error accessing " + pathType + ": " + e.getMessage());
+                "Security error accessing path: " + e.getMessage());
         } catch (IOException e) {
             throw new AfsException(ErrorCode.INTERNAL_ERROR,
-                "IO error validating " + pathType + ": " + e.getMessage());
+                "IO error validating: " + e.getMessage());
         }
 
         try {
             Path normalizedPath = resolvedPath.normalize().toRealPath();
             if (!Files.exists(normalizedPath)) {
-                throw new AfsException(ErrorCode.NOT_FOUND, pathType + " does not exist: " + normalizedPath);
+                throw new AfsException(ErrorCode.NOT_FOUND, "path does not exist: " + normalizedPath);
             }
         
             SharedFolderValidation validation = new SharedFolderValidation();
@@ -251,14 +205,14 @@ public class SharedFolderValidator {
             
                 if (!Files.isDirectory(normalizedPath)) {
                     validation.setValid(false);
-                    validation.setErrorMessage(pathType + " is not a directory");
+                    validation.setErrorMessage("path is not a directory");
                     validation.setPermissionCheckError("Path must be a directory");
                     return validation;
                 }
             
                 if (!validation.getCanRead() || !validation.getCanWrite() || !validation.getCanExecute()) {
                     validation.setValid(false);
-                    validation.setErrorMessage(pathType + " has insufficient permissions");
+                    validation.setErrorMessage("path has insufficient permissions");
                     validation.setPermissionCheckError(
                         String.format("Required permissions missing - Read: %b, Write: %b, Execute: %b",
                             validation.getCanRead(), validation.getCanWrite(), validation.getCanExecute()));
@@ -272,24 +226,24 @@ public class SharedFolderValidator {
                     validation.setValid(true);
                 } catch (SecurityException e) {
                     validation.setValid(false);
-                    validation.setErrorMessage(pathType + " directory listing denied");
+                    validation.setErrorMessage("directory listing denied");
                     validation.setPermissionCheckError("Cannot list directory contents: " + e.getMessage());
                     return validation;
                 }
             
             } catch (SecurityException e) {
                 validation.setValid(false);
-                validation.setErrorMessage("Security error accessing " + pathType);
+                validation.setErrorMessage("Security error accessing path");
                 validation.setPermissionCheckError(e.getMessage());
             } catch (IOException e) {
                 validation.setValid(false);
-                validation.setErrorMessage("IO error validating " + pathType);
+                validation.setErrorMessage("IO error validating path");
                 validation.setPermissionCheckError(e.getMessage());
             }
         
             return validation;
         } catch (IOException e) {
-            throw new AfsException(ErrorCode.VALIDATION_FAILED, "Error validating " + pathType + ": " + e.getMessage());
+            throw new AfsException(ErrorCode.VALIDATION_FAILED, "Error validating path: " + e.getMessage());
         }
     }
 
@@ -305,9 +259,5 @@ public class SharedFolderValidator {
         }
 
         return path;
-    }
-
-    public static String toUnixPathString(Path path) {
-        return path.toString().replace("\\", "/");
     }
 }

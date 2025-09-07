@@ -9,8 +9,6 @@ import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 
-import java.util.List;
-
 @Slf4j
 @Configuration
 @EnableScheduling
@@ -39,17 +37,5 @@ public class SharedFolderConfig {
             log.debug("Performing periodic shared folder validation");
             validator.validateConfiguration();
         }
-    }
-
-    public void updateConfiguration(List<String> newBasePaths, String newTempPath) {
-        if (!properties.isAllowRuntimeUpdates()) {
-            throw new IllegalStateException("Runtime updates are not allowed");
-        }
-
-        log.info("Updating shared folder configuration");
-        properties.setBasePaths(newBasePaths);
-        properties.setTempPath(newTempPath);
-        validator.validateConfiguration();
-        log.info("Shared folder configuration updated successfully");
     }
 }

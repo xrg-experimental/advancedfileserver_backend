@@ -12,6 +12,7 @@ public class SharedFolderConfigRequest {
     @NotNull(message = "isBasePath must be specified")
     private Boolean isBasePath;
     
-    @NotNull(message = "isTempPath must be specified")
-    private Boolean isTempPath;
+    // Note: isTempPath is no longer supported but kept for backward compatibility
+    // Any request with isTempPath=true will be rejected
+    private Boolean isTempPath = false;
 }

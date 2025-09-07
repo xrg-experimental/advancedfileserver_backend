@@ -36,17 +36,6 @@ public class SharedFolderConfigController {
         return ResponseEntity.ok(SharedFolderConfigResponse.of(configs));
     }
 
-    @GetMapping("/base-paths")
-    public ResponseEntity<SharedFolderConfigResponse> getBasePaths() {
-        List<SharedFolderConfig> basePaths = configService.getBasePaths();
-        return ResponseEntity.ok(SharedFolderConfigResponse.of(basePaths));
-    }
-
-    @GetMapping("/temp-path")
-    public ResponseEntity<SharedFolderConfigResponse> getTempPath() {
-        return ResponseEntity.ok(SharedFolderConfigResponse.of(configService.getTempPath()));
-    }
-
     @PostMapping("/initialize")
     public ResponseEntity<SharedFolderConfigResponse> initializeFromProperties(@AuthenticationPrincipal User user) {
         configService.initializeFromProperties(user);
@@ -114,10 +103,8 @@ public class SharedFolderConfigController {
             @AuthenticationPrincipal User user) {
         
         SharedFolderConfig config = configService.createOrUpdateConfig(
-            request.getPath(), 
-            request.getIsBasePath(), 
-            request.getIsTempPath(), 
-            user
+            request.getPath(),
+                user
         );
         return ResponseEntity.ok(SharedFolderConfigResponse.of(config));
     }

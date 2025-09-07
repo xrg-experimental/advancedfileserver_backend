@@ -9,8 +9,7 @@ import java.util.Optional;
 
 @Repository
 public interface SharedFolderConfigRepository extends JpaRepository<SharedFolderConfig, Long> {
-    List<SharedFolderConfig> findByIsBasePath(boolean isBasePath);
-    Optional<SharedFolderConfig> findByIsTempPath(boolean isTempPath);
+    Optional<SharedFolderConfig> findByIsBasePath(boolean isBasePath);
     boolean existsByPath(String path);
     Optional<SharedFolderConfig> findByPath(String path);
 }
