@@ -9,7 +9,6 @@ import com.sme.afs.model.User;
 import com.sme.afs.repository.GroupRepository;
 import com.sme.afs.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
