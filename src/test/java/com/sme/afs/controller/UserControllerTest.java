@@ -3,6 +3,7 @@ package com.sme.afs.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sme.afs.dto.CreateUserRequest;
 import com.sme.afs.dto.UserDTO;
+import com.sme.afs.error.ErrorCode;
 import com.sme.afs.exception.AfsException;
 import com.sme.afs.model.Role;
 import com.sme.afs.model.User;
@@ -17,7 +18,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.test.context.support.WithMockUser;
@@ -139,7 +139,7 @@ class UserControllerTest {
     @WithMockUser(roles = "ADMIN")
     void createUser_WithExistingUsername_ShouldReturnConflict() throws Exception {
         when(userService.createUser(any(CreateUserRequest.class)))
-            .thenThrow(new AfsException(HttpStatus.CONFLICT, "Username already exists"));
+            .thenThrow(new AfsException(ErrorCode.VALIDATION_FAILED, "Username already exists"));
 
         mockMvc.perform(post("/api/users")
                 .with(csrf())

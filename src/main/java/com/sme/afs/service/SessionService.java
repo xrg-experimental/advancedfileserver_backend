@@ -45,7 +45,7 @@ public class SessionService {
         
         // If max concurrent sessions reached, throw exception
         if (activeSessions.size() >= sessionProperties.getMaxConcurrent()) {
-            throw new MaxSessionsExceededException(username, sessionProperties.getMaxConcurrent());
+            throw new MaxSessionsExceededException(String.format("User %s has reached the maximum number of concurrent sessions (%d)", username, sessionProperties.getMaxConcurrent()));
         }
 
         // Create new session

@@ -1,6 +1,7 @@
 package com.sme.afs.service;
 
 import com.sme.afs.dto.*;
+import com.sme.afs.error.ErrorCode;
 import com.sme.afs.exception.AfsException;
 import com.sme.afs.model.Group;
 import com.sme.afs.model.Role;
@@ -10,7 +11,6 @@ import com.sme.afs.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -41,7 +41,7 @@ public class UserService {
     public UserDTO createUser(CreateUserRequest request) {
         // Check if username already exists
         if (userRepository.findByUsername(request.getUsername()).isPresent()) {
-            throw new AfsException(HttpStatus.CONFLICT, "Username already exists");
+            throw new AfsException(ErrorCode.VALIDATION_FAILED, "Username already exists");
         }
 
         User user = new User();
@@ -51,7 +51,7 @@ public class UserService {
         user.setUserType(request.getUserType());
         user.setEnabled(request.isEnabled());
 
-        // Set default role based on user type if no roles provided
+        // Set default role based on a user type if no roles provided
         if (request.getRoles() == null || request.getRoles().isEmpty()) {
             user.getRoles().add(Role.valueOf("ROLE_" + request.getUserType().name()));
         } else {
@@ -73,12 +73,12 @@ public class UserService {
     @Transactional
     public UserDTO updateUserStatus(String username, boolean enabled) {
         User user = userRepository.findByUsername(username)
-            .orElseThrow(() -> new AfsException(HttpStatus.NOT_FOUND, 
+            .orElseThrow(() -> new AfsException(ErrorCode.NOT_FOUND, 
                 String.format("User not found: %s", username)));
 
         // Don't allow disabling admin users
         if (!enabled && user.getRoles().contains(Role.ROLE_ADMIN)) {
-            throw new AfsException(HttpStatus.BAD_REQUEST, 
+            throw new AfsException(ErrorCode.VALIDATION_FAILED,
                 "Cannot disable administrator account");
         }
 
@@ -96,7 +96,7 @@ public class UserService {
     @Transactional
     public UserDTO updateUser(String username, UpdateUserRequest request) {
         User user = userRepository.findByUsername(username)
-            .orElseThrow(() -> new AfsException(HttpStatus.NOT_FOUND, "User not found"));
+            .orElseThrow(() -> new AfsException(ErrorCode.NOT_FOUND, "User not found"));
 
         // Update email if provided and valid
         if (request.getEmail() != null) {
@@ -117,7 +117,7 @@ public class UserService {
                     try {
                         return Role.valueOf(roleName);
                     } catch (IllegalArgumentException e) {
-                        throw new AfsException(HttpStatus.BAD_REQUEST, "Invalid role: " + roleName);
+                        throw new AfsException(ErrorCode.VALIDATION_FAILED, "Invalid role: " + roleName);
                     }
                 })
                 .collect(Collectors.toSet());
@@ -131,7 +131,7 @@ public class UserService {
             
             // Validate all requested groups exist
             if (groups.size() != request.getGroups().size()) {
-                throw new AfsException(HttpStatus.BAD_REQUEST, "One or more groups do not exist");
+                throw new AfsException(ErrorCode.VALIDATION_FAILED, "One or more groups do not exist");
             }
             
             user.setGroups(groups);
@@ -149,7 +149,7 @@ public class UserService {
     @Transactional(readOnly = true)
     public ProfileDTO getCurrentUserProfile(String username) {
         User user = userRepository.findByUsername(username)
-            .orElseThrow(() -> new AfsException(HttpStatus.NOT_FOUND, "User not found"));
+            .orElseThrow(() -> new AfsException(ErrorCode.NOT_FOUND, "User not found"));
         
         ProfileDTO profile = new ProfileDTO();
         profile.setUsername(user.getUsername());
@@ -161,7 +161,7 @@ public class UserService {
     @Transactional
     public ProfileDTO updateCurrentUserProfile(String username, UpdateProfileRequest request) {
         User user = userRepository.findByUsername(username)
-            .orElseThrow(() -> new AfsException(HttpStatus.NOT_FOUND, "User not found"));
+            .orElseThrow(() -> new AfsException(ErrorCode.NOT_FOUND, "User not found"));
 
         // Update email if provided
         if (request.getEmail() != null && !request.getEmail().equals(user.getEmail())) {

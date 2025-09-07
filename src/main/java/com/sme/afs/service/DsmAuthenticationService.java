@@ -2,10 +2,10 @@ package com.sme.afs.service;
 
 import com.sme.afs.config.SynologyProperties;
 import com.sme.afs.dto.DsmAuthResponse;
+import com.sme.afs.error.ErrorCode;
 import com.sme.afs.exception.AfsException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
@@ -42,7 +42,7 @@ public class DsmAuthenticationService {
             DsmAuthResponse response = synologyRestTemplate.getForObject(url, DsmAuthResponse.class);
             
             if (response == null) {
-                throw new AfsException("Failed to get response from DSM authentication API");
+                throw new AfsException(ErrorCode.ENDPOINT_NOT_FOUND,"Failed to get response from DSM authentication API");
             }
 
             if (!response.isSuccess()) {
@@ -56,7 +56,7 @@ public class DsmAuthenticationService {
         } catch (RestClientException e) {
             log.error("Error while authenticating with DSM", e);
             log.error("DSM authentication service error: {}", e.getMessage());
-            throw new AfsException(HttpStatus.SERVICE_UNAVAILABLE, 
+            throw new AfsException(ErrorCode.SESSION_INVALID,
                 "DSM authentication service unavailable: " + e.getMessage());
         }
     }

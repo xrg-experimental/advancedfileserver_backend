@@ -1,20 +1,18 @@
 package com.sme.afs.service;
 
+import com.sme.afs.error.ErrorCode;
 import com.sme.afs.exception.AfsException;
 import com.sme.afs.model.User;
 import com.sme.afs.model.VirtualPath;
 import com.sme.afs.repository.VirtualPathRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 
 @Slf4j
 @Service
@@ -29,14 +27,14 @@ public class VirtualPathService {
         validatePaths(virtualPath, physicalPath);
 
         if (virtualPathRepository.existsByVirtualPathAndIsDeletedFalse(virtualPath)) {
-            throw new AfsException(HttpStatus.CONFLICT, "Virtual path already exists: " + virtualPath);
+            throw new AfsException(ErrorCode.VALIDATION_FAILED, "Virtual path already exists: " + virtualPath);
         }
 
         String parentVirtualPath = getParentPath(virtualPath);
         VirtualPath parent = null;
         if (!parentVirtualPath.equals("/")) {
             parent = virtualPathRepository.findByVirtualPathAndIsDeletedFalse(parentVirtualPath)
-                .orElseThrow(() -> new AfsException(HttpStatus.NOT_FOUND, 
+                .orElseThrow(() -> new AfsException(ErrorCode.NOT_FOUND,
                     "Parent path not found: " + parentVirtualPath));
         }
 
@@ -57,11 +55,11 @@ public class VirtualPathService {
     @Transactional
     public void deleteDirectory(String virtualPath, User user) {
         VirtualPath vPath = virtualPathRepository.findByVirtualPathAndIsDeletedFalse(virtualPath)
-            .orElseThrow(() -> new AfsException(HttpStatus.NOT_FOUND, 
+            .orElseThrow(() -> new AfsException(ErrorCode.NOT_FOUND,
                 "Virtual path not found: " + virtualPath));
 
         if (!vPath.isDirectory()) {
-            throw new AfsException(HttpStatus.BAD_REQUEST, "Path is not a directory: " + virtualPath);
+            throw new AfsException(ErrorCode.VALIDATION_FAILED, "Path is not a directory: " + virtualPath);
         }
 
         markDeleted(vPath, user);
@@ -70,20 +68,20 @@ public class VirtualPathService {
     @Transactional
     public VirtualPath moveDirectory(String sourceVirtualPath, String targetVirtualPath, User user) {
         VirtualPath source = virtualPathRepository.findByVirtualPathAndIsDeletedFalse(sourceVirtualPath)
-            .orElseThrow(() -> new AfsException(HttpStatus.NOT_FOUND, 
+            .orElseThrow(() -> new AfsException(ErrorCode.NOT_FOUND,
                 "Source path not found: " + sourceVirtualPath));
 
         if (!source.isDirectory()) {
-            throw new AfsException(HttpStatus.BAD_REQUEST, "Source is not a directory: " + sourceVirtualPath);
+            throw new AfsException(ErrorCode.VALIDATION_FAILED, "Source is not a directory: " + sourceVirtualPath);
         }
 
         String targetParentPath = getParentPath(targetVirtualPath);
         VirtualPath targetParent = virtualPathRepository.findByVirtualPathAndIsDeletedFalse(targetParentPath)
-            .orElseThrow(() -> new AfsException(HttpStatus.NOT_FOUND, 
+            .orElseThrow(() -> new AfsException(ErrorCode.NOT_FOUND,
                 "Target parent path not found: " + targetParentPath));
 
         if (source.isAncestorOf(targetParent)) {
-            throw new AfsException(HttpStatus.BAD_REQUEST, 
+            throw new AfsException(ErrorCode.VALIDATION_FAILED,
                 "Cannot move directory to its own subdirectory");
         }
 
@@ -97,16 +95,16 @@ public class VirtualPathService {
 
     private void validatePaths(String virtualPath, String physicalPath) {
         if (!virtualPath.startsWith("/")) {
-            throw new AfsException(HttpStatus.BAD_REQUEST, "Virtual path must be absolute");
+            throw new AfsException(ErrorCode.VALIDATION_FAILED, "Virtual path must be absolute");
         }
 
         try {
-            Path normalized = sharedFolderValidator.validateAndNormalizePath(physicalPath);
+            Path normalized = SharedFolderValidator.validateAndNormalizePath(physicalPath);
             if (!normalized.toString().equals(physicalPath)) {
-                throw new AfsException(HttpStatus.BAD_REQUEST, "Invalid physical path");
+                throw new AfsException(ErrorCode.VALIDATION_FAILED, "Invalid physical path");
             }
         } catch (Exception e) {
-            throw new AfsException(HttpStatus.BAD_REQUEST, "Invalid physical path: " + e.getMessage());
+            throw new AfsException(ErrorCode.VALIDATION_FAILED, "Invalid physical path", e);
         }
     }
 
