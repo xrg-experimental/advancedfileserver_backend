@@ -67,6 +67,9 @@ public class FileService {
     public FileInfoResponse getFileInfo(String path) {
         Path filePath = getAbsolutePath(path);
         validatePath(filePath);
+        if (!Files.exists(filePath, LinkOption.NOFOLLOW_LINKS)) {
+            throw new AfsException(ErrorCode.NOT_FOUND, "File not found");
+        }
         return createFileInfo(filePath);
     }
 
@@ -108,6 +111,9 @@ public class FileService {
                 throw new AfsException(ErrorCode.VALIDATION_FAILED, "Path resolves outside of root directory");
             }
             Resource resource = new UrlResource(real.toUri());
+            if (Files.isDirectory(real)) {
+                throw new AfsException(ErrorCode.VALIDATION_FAILED, "Cannot download a directory");
+            }
             if (resource.exists() || resource.isReadable()) {
                 return resource;
             } else {
