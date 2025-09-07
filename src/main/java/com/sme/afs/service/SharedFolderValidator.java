@@ -186,17 +186,16 @@ public class SharedFolderValidator {
             throw new AfsException(ErrorCode.VALIDATION_FAILED, pathType + " cannot be empty");
         }
 
+        Path resolvedPath = Path.of(path);
         try {
             // Normalize and get the absolute path
             Path normalizedPath = validateAndNormalizePath(path);
 
-            // Security checks
-            if (!normalizedPath.startsWith(normalizedPath.getRoot())) {
-                throw new AfsException(ErrorCode.VALIDATION_FAILED, "Invalid path: must be absolute");
-            }
-            
-            if (path.contains("..") || !toUnixPathString(normalizedPath).equals(path)) {
-                throw new AfsException(ErrorCode.VALIDATION_FAILED, "Path traversal is not allowed");
+            // Security checks: reject any ".." segment in the raw input
+            for (Path seg : resolvedPath) {
+                if ("..".equals(seg.toString())) {
+                    throw new AfsException(ErrorCode.VALIDATION_FAILED, "Path traversal is not allowed");
+                }
             }
 
             // Existence check
@@ -237,7 +236,7 @@ public class SharedFolderValidator {
         }
 
         try {
-            Path normalizedPath = Path.of(path).normalize().toRealPath();
+            Path normalizedPath = resolvedPath.normalize().toRealPath();
             if (!Files.exists(normalizedPath)) {
                 throw new AfsException(ErrorCode.NOT_FOUND, pathType + " does not exist: " + normalizedPath);
             }
