@@ -10,9 +10,7 @@ import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.file.LinkOption;
 import java.nio.file.Path;
-import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.UserPrincipal;
 import java.time.LocalDateTime;
@@ -249,15 +247,10 @@ public class SharedFolderValidator {
 
     public static Path validateAndNormalizePath(String pathStr) throws IOException {
         Path path = Path.of(pathStr).normalize().toAbsolutePath();
-
-        // Ensure NOFOLLOW_LINKS option is used when resolving the path
-        BasicFileAttributes attrs = Files.readAttributes(path, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
-
-        // Optionally add additional file attribute checks here if required
-        if (attrs.isSymbolicLink()) {
+        // Block direct symlink targets (content symlinks are caught later)
+        if (Files.isSymbolicLink(path)) {
             throw new IOException("Path traversal via symbolic link is not allowed: " + path);
         }
-
         return path;
     }
 }
