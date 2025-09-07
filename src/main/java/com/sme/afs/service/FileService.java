@@ -97,8 +97,17 @@ public class FileService {
         try {
             Path filePath = getAbsolutePath(path);
             validatePath(filePath);
-            Resource resource = new UrlResource(filePath.toUri());
-
+            Path real;
+            try {
+                real = filePath.toRealPath(); // resolves symlinks
+            } catch (IOException e) {
+                log.error("Failed to read file {}: {}", path, e, e);
+                throw new AfsException(ErrorCode.INTERNAL_ERROR, "Failed to read file");
+            }
+            if (!real.startsWith(rootLocation)) {
+                throw new AfsException(ErrorCode.VALIDATION_FAILED, "Path resolves outside of root directory");
+            }
+            Resource resource = new UrlResource(real.toUri());
             if (resource.exists() || resource.isReadable()) {
                 return resource;
             } else {
