@@ -92,11 +92,15 @@ public class SharedFolderValidator {
         // Validate package owner first
         validatePackageOwner();
 
-        // Validate the base path
-        validatePath(properties.getBasePath());
-        if (properties.isCreateMissingDirectories()) {
-            validateRequiredStructure(properties.getBasePath());
+        // Validate/create the base path
+        String basePath = properties.getBasePath();
+        if (basePath == null || basePath.isBlank()) {
+            throw new AfsException(ErrorCode.VALIDATION_FAILED, "basePath is not configured");
         }
+        if (properties.isCreateMissingDirectories()) {
+            validateRequiredStructure(basePath);
+        }
+        validatePath(basePath);
     }
 
     private void validateRequiredStructure(String basePath) {
