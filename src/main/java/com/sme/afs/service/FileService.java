@@ -50,7 +50,8 @@ public class FileService {
 
             return response;
         } catch (IOException e) {
-            throw new AfsException(ErrorCode.INTERNAL_ERROR, "Failed to list directory: " + e.getMessage());
+            log.error("Failed to list directory at {}: {}", dirPath, e, e);
+            throw new AfsException(ErrorCode.INTERNAL_ERROR, "Failed to list directory");
         }
     }
 
@@ -72,7 +73,8 @@ public class FileService {
             Files.createDirectories(dirPath);
             return createFileInfo(dirPath);
         } catch (IOException e) {
-            throw new AfsException(ErrorCode.INTERNAL_ERROR, "Failed to create directory: " + e.getMessage());
+            log.error("Failed to create directory {}: {}", path, e, e);
+            throw new AfsException(ErrorCode.INTERNAL_ERROR, "Failed to create directory");
         }
     }
 
@@ -136,10 +138,11 @@ public class FileService {
             if (resource.exists() || resource.isReadable()) {
                 return resource;
             } else {
-                throw new AfsException(ErrorCode.NOT_FOUND, "File not found: " + path);
+                throw new AfsException(ErrorCode.NOT_FOUND, "File not found");
             }
         } catch (MalformedURLException e) {
-            throw new AfsException(ErrorCode.INTERNAL_ERROR, "Failed to read file: " + e.getMessage());
+            log.error("Failed to read file {}: {}", path, e, e);
+            throw new AfsException(ErrorCode.INTERNAL_ERROR, "Failed to read file");
         }
     }
 
@@ -155,7 +158,8 @@ public class FileService {
             Files.copy(file.getInputStream(), targetPath, StandardCopyOption.REPLACE_EXISTING);
             return createFileInfo(targetPath);
         } catch (IOException e) {
-            throw new AfsException(ErrorCode.INTERNAL_ERROR, "Failed to store file: " + e.getMessage());
+            log.error("Failed to store file to {}: {}", path, e, e);
+            throw new AfsException(ErrorCode.INTERNAL_ERROR, "Failed to store file");
         }
     }
 
@@ -180,7 +184,8 @@ public class FileService {
 
             return info;
         } catch (IOException e) {
-            throw new AfsException(ErrorCode.INTERNAL_ERROR, "Failed to read file info: " + e.getMessage());
+            log.error("Failed to read file info {}: {}", path, e, e);
+            throw new AfsException(ErrorCode.INTERNAL_ERROR, "Failed to read file info");
         }
     }
 
