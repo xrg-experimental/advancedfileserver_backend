@@ -15,7 +15,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.file.Path;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -35,9 +34,6 @@ public class SharedFolderConfigService {
             // Pre-validate configuration
             validator.validateConfiguration();
             
-            // Begin transaction for configuration updates
-            configRepository.save(configRepository.findByIsBasePath(true).orElseThrow(() -> new AfsException(ErrorCode.NOT_FOUND, "Base path not found")));
-
             // Add the base path from properties
             String basePath = properties.getBasePath();
             if (basePath != null && !basePath.isEmpty()) {
@@ -56,42 +52,11 @@ public class SharedFolderConfigService {
         }
     }
 
-    @Transactional(readOnly = true)
-    public void validateAllConfigurations() {
-        List<SharedFolderConfig> configs = configRepository.findAll();
-        List<String> errors = new ArrayList<>();
-        
-        for (SharedFolderConfig config : configs) {
-            try {
-                validator.validatePath(config.getPath());
-            } catch (AfsException e) {
-                errors.add(String.format("Invalid path %s: %s", 
-                    config.getPath(), e.getMessage()));
-            }
-        }
-        
-        if (!errors.isEmpty()) {
-            throw new AfsException(ErrorCode.VALIDATION_FAILED,
-                "Configuration validation failed:\n" + String.join("\n", errors));
-        }
-    }
-
     @Transactional
     public SharedFolderConfig createOrUpdateConfig(String path, User user) {
         // Normalize the path before validation
         Path normalizedPath = Path.of(path).normalize().toAbsolutePath();
         String normalizedPathStr = normalizedPath.toString();
-
-        // Validate base path uniqueness - only one base path is allowed
-        Optional<SharedFolderConfig> basePath = configRepository.findByIsBasePath(true);
-        if (basePath.isPresent()) {
-            var baseConfig = basePath.get();
-            if (normalizedPathStr.startsWith(baseConfig.getPath()) ||
-                baseConfig.getPath().startsWith(normalizedPathStr)) {
-                throw new AfsException(ErrorCode.VALIDATION_FAILED,
-                    "Base paths cannot contain each other: " + baseConfig.getPath());
-            }
-        }
 
         Optional<SharedFolderConfig> existing = configRepository.findByPath(normalizedPathStr);
         SharedFolderConfig config = existing.orElse(new SharedFolderConfig());

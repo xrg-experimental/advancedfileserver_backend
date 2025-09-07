@@ -4,12 +4,9 @@ import com.sme.afs.model.SharedFolderConfig;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-import java.util.List;
 import java.util.Optional;
 
 @Repository
 public interface SharedFolderConfigRepository extends JpaRepository<SharedFolderConfig, Long> {
-    Optional<SharedFolderConfig> findByIsBasePath(boolean isBasePath);
-    boolean existsByPath(String path);
     Optional<SharedFolderConfig> findByPath(String path);
 }
