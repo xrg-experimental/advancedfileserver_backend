@@ -30,6 +30,29 @@ public class FileService {
 
     public FileService(SharedFolderConfig sharedFolderConfig) {
         this.rootLocation = Path.of(sharedFolderConfig.getBasePath()).toAbsolutePath().normalize();
+        
+        // Fail-fast validation: ensure root location exists and is a directory
+        if (!Files.exists(rootLocation)) {
+            throw new AfsException(ErrorCode.INTERNAL_ERROR, 
+                "Configured base path does not exist: " + rootLocation);
+        }
+        
+        if (!Files.isDirectory(rootLocation)) {
+            throw new AfsException(ErrorCode.INTERNAL_ERROR, 
+                "Configured base path is not a directory: " + rootLocation);
+        }
+        
+        if (!Files.isReadable(rootLocation)) {
+            throw new AfsException(ErrorCode.INTERNAL_ERROR, 
+                "Configured base path is not readable: " + rootLocation);
+        }
+        
+        if (!Files.isWritable(rootLocation)) {
+            throw new AfsException(ErrorCode.INTERNAL_ERROR, 
+                "Configured base path is not writable: " + rootLocation);
+        }
+        
+        log.info("FileService initialized with root location: {}", rootLocation);
     }
 
     public FileInfoResponse createDirectory(String path) {
