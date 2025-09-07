@@ -102,9 +102,9 @@ public class SharedFolderConfigController {
     public ResponseEntity<SharedFolderConfigResponse> createConfig(
             @Valid @RequestBody SharedFolderConfigRequest request,
             @AuthenticationPrincipal User user) {
-        
+
         SharedFolderConfig config = configService.createOrUpdateConfig(
-            request.getPath(),
+                request.getPath() != null ? request.getPath().trim() : null,
                 user
         );
         return ResponseEntity.ok(SharedFolderConfigResponse.of(config));
