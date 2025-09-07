@@ -40,8 +40,8 @@ public class SharedFolderValidator {
         }
 
         // Validate the base path is accessible by package owner
-        if (!properties.getBasePath().isEmpty()) {
-            String path = properties.getBasePath();
+        String path = properties.getBasePath();
+        if (path != null && !path.isBlank()) {
             Path basePath = Path.of(path);
             try {
                 UserPrincipal owner = Files.getOwner(basePath);
