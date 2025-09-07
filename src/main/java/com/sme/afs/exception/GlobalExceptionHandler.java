@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 import org.springframework.web.servlet.NoHandlerFoundException;
+import org.springframework.web.util.HtmlUtils;
 
 import java.util.stream.Collectors;
 
@@ -19,14 +20,18 @@ import java.util.stream.Collectors;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    private String sanitize(String input) {
+        return input == null ? null : HtmlUtils.htmlEscape(input);
+    }
+
     @ExceptionHandler(SessionException.class)
     public ResponseEntity<ErrorResponse> handleSessionException(SessionException ex, HttpServletRequest request) {
         log.debug("Session exception occurred: {}", ex.getMessage());
         ErrorResponse errorResponse = new ErrorResponse(
             ex.getStatus().value(),
             ex.getStatus().getReasonPhrase(),
-            ex.getMessage(),
-            request.getRequestURI()
+            sanitize(ex.getMessage()),
+            sanitize(request.getRequestURI())
         );
         return new ResponseEntity<>(errorResponse, ex.getStatus());
     }
@@ -38,8 +43,8 @@ public class GlobalExceptionHandler {
         ErrorResponse errorResponse = new ErrorResponse(
             ex.getStatus().value(),
             "Too Many Sessions",
-            ex.getMessage(),
-            request.getRequestURI()
+            sanitize(ex.getMessage()),
+            sanitize(request.getRequestURI())
         );
         return new ResponseEntity<>(errorResponse, ex.getStatus());
     }
@@ -51,8 +56,8 @@ public class GlobalExceptionHandler {
         ErrorResponse errorResponse = new ErrorResponse(
             ex.getStatus().value(),
             "Session Expired",
-            ex.getMessage(),
-            request.getRequestURI()
+            sanitize(ex.getMessage()),
+            sanitize(request.getRequestURI())
         );
         return new ResponseEntity<>(errorResponse, ex.getStatus());
     }
@@ -64,8 +69,8 @@ public class GlobalExceptionHandler {
         ErrorResponse errorResponse = new ErrorResponse(
             ex.getStatus().value(),
             "Invalid Session",
-            ex.getMessage(),
-            request.getRequestURI()
+            sanitize(ex.getMessage()),
+            sanitize(request.getRequestURI())
         );
         return new ResponseEntity<>(errorResponse, ex.getStatus());
     }
@@ -77,8 +82,8 @@ public class GlobalExceptionHandler {
         ErrorResponse errorResponse = new ErrorResponse(
             ex.getStatus().value(),
             "Session Not Found",
-            ex.getMessage(),
-            request.getRequestURI()
+            sanitize(ex.getMessage()),
+            sanitize(request.getRequestURI())
         );
         return new ResponseEntity<>(errorResponse, ex.getStatus());
     }
@@ -94,13 +99,13 @@ public class GlobalExceptionHandler {
             HttpStatus.BAD_REQUEST.value(),
             "Validation failed",
             errors,
-            request.getRequestURI()
+            sanitize(request.getRequestURI())
         );
         return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
     }
 
     private String mapFieldErrorToString(FieldError fieldError) {
-        return fieldError.getField() + ": " + fieldError.getDefaultMessage();
+        return sanitize(fieldError.getField()) + ": " + sanitize(fieldError.getDefaultMessage());
     }
 
     @ExceptionHandler(AfsException.class)
@@ -109,8 +114,8 @@ public class GlobalExceptionHandler {
         ErrorResponse errorResponse = new ErrorResponse(
             ex.getStatus().value(),
             ex.getStatus().getReasonPhrase(),
-            ex.getMessage(),
-            request.getRequestURI()
+            sanitize(ex.getMessage()),
+            sanitize(request.getRequestURI())
         );
         return new ResponseEntity<>(errorResponse, ex.getStatus());
     }
@@ -124,32 +129,32 @@ public class GlobalExceptionHandler {
             HttpStatus.FORBIDDEN.value(),
             HttpStatus.FORBIDDEN.getReasonPhrase(),
             "Access Denied",
-            request.getRequestURI()
+            sanitize(request.getRequestURI())
         );
         return new ResponseEntity<>(errorResponse, HttpStatus.FORBIDDEN);
     }
 
     // Handle static resource requests that don't exist (e.g., /api/ or /api/swagger-ui.html when resources are not present)
     @ExceptionHandler(NoResourceFoundException.class)
-    public ResponseEntity<ErrorResponse> handleNoResourceFoundException(NoResourceFoundException ex, HttpServletRequest request) {
+    public ResponseEntity<ErrorResponse> handleNoResourceFoundException(NoResourceFoundException ignore, HttpServletRequest request) {
         log.debug("Resource not found: {}", request.getRequestURI());
         ErrorResponse errorResponse = new ErrorResponse(
             HttpStatus.NOT_FOUND.value(),
             HttpStatus.NOT_FOUND.getReasonPhrase(),
             "Resource not found",
-            request.getRequestURI()
+            sanitize(request.getRequestURI())
         );
         return new ResponseEntity<>(errorResponse, HttpStatus.NOT_FOUND);
     }
 
     @ExceptionHandler(NoHandlerFoundException.class)
-    public ResponseEntity<ErrorResponse> handleNoHandlerFoundException(NoHandlerFoundException ex, HttpServletRequest request) {
+    public ResponseEntity<ErrorResponse> handleNoHandlerFoundException(NoHandlerFoundException ignore, HttpServletRequest request) {
         log.debug("No handler found: {} {}", request.getMethod(), request.getRequestURI());
         ErrorResponse errorResponse = new ErrorResponse(
             HttpStatus.NOT_FOUND.value(),
             HttpStatus.NOT_FOUND.getReasonPhrase(),
             "Endpoint not found",
-            request.getRequestURI()
+            sanitize(request.getRequestURI())
         );
         return new ResponseEntity<>(errorResponse, HttpStatus.NOT_FOUND);
     }
@@ -161,12 +166,8 @@ public class GlobalExceptionHandler {
             500,
             "Internal Server Error",
             "An unexpected error occurred",
-            request.getRequestURI()
+            sanitize(request.getRequestURI())
         );
         return ResponseEntity.internalServerError().body(errorResponse);
-    }
-
-    // Inner class for validation errors
-    public record ValidationError(String field, String message) {
     }
 }
