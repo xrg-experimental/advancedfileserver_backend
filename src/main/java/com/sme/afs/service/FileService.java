@@ -32,8 +32,46 @@ public class FileService {
         this.rootLocation = Path.of(sharedFolderConfig.getBasePath());
     }
 
+    public FileInfoResponse createDirectory(String path) {
+        try {
+            Path dirPath = getAbsolutePath(path);
+            validatePath(dirPath);
+
+            if (Files.exists(dirPath)) {
+                throw new AfsException(ErrorCode.VALIDATION_FAILED, "Directory already exists");
+            }
+
+            Files.createDirectories(dirPath);
+            return createFileInfo(dirPath);
+        } catch (IOException e) {
+            log.error("Failed to create directory {}: {}", path, e, e);
+            throw new AfsException(ErrorCode.INTERNAL_ERROR, "Failed to create directory");
+        }
+    }
+
+    public void delete(String path) {
+        try {
+            Path filePath = getAbsolutePath(path);
+            validatePath(filePath);
+
+            if (Files.isDirectory(filePath)) {
+                FileSystemUtils.deleteRecursively(filePath);
+            } else {
+                Files.delete(filePath);
+            }
+        } catch (IOException e) {
+            throw new AfsException(ErrorCode.INTERNAL_ERROR, "Failed to delete: " + e.getMessage());
+        }
+    }
+
+    public FileInfoResponse getFileInfo(String path) {
+        Path filePath = getAbsolutePath(path);
+        validatePath(filePath);
+        return createFileInfo(filePath);
+    }
+
     public FileListResponse listDirectory(String path) {
-        Path dirPath = rootLocation.resolve(path).normalize();
+        Path dirPath = getAbsolutePath(path);
         validatePath(dirPath);
 
         try (Stream<Path> stream = Files.list(dirPath)) {
@@ -55,47 +93,44 @@ public class FileService {
         }
     }
 
-    public FileInfoResponse getFileInfo(String path) {
-        Path filePath = rootLocation.resolve(path).normalize();
-        validatePath(filePath);
-        return createFileInfo(filePath);
-    }
-
-    public FileInfoResponse createDirectory(String path) {
+    public Resource loadAsResource(String path) {
         try {
-            Path dirPath = rootLocation.resolve(path).normalize();
-            validatePath(dirPath);
+            Path filePath = getAbsolutePath(path);
+            validatePath(filePath);
+            Resource resource = new UrlResource(filePath.toUri());
 
-            if (Files.exists(dirPath)) {
-                throw new AfsException(ErrorCode.VALIDATION_FAILED, "Directory already exists");
+            if (resource.exists() || resource.isReadable()) {
+                return resource;
+            } else {
+                throw new AfsException(ErrorCode.NOT_FOUND, "File not found");
             }
-
-            Files.createDirectories(dirPath);
-            return createFileInfo(dirPath);
-        } catch (IOException e) {
-            log.error("Failed to create directory {}: {}", path, e, e);
-            throw new AfsException(ErrorCode.INTERNAL_ERROR, "Failed to create directory");
+        } catch (MalformedURLException e) {
+            log.error("Failed to read file {}: {}", path, e, e);
+            throw new AfsException(ErrorCode.INTERNAL_ERROR, "Failed to read file");
         }
     }
 
-    public void delete(String path) {
+    public FileInfoResponse move(String sourcePath, String targetPath) {
         try {
-            Path filePath = rootLocation.resolve(path).normalize();
-            validatePath(filePath);
+            Path source = getAbsolutePath(sourcePath);
+            Path target = getAbsolutePath(targetPath);
+            validatePath(source);
+            validatePath(target);
 
-            if (Files.isDirectory(filePath)) {
-                FileSystemUtils.deleteRecursively(filePath);
-            } else {
-                Files.delete(filePath);
+            if (Files.exists(target)) {
+                throw new AfsException(ErrorCode.VALIDATION_FAILED, "Target already exists");
             }
+
+            Files.move(source, target);
+            return createFileInfo(target);
         } catch (IOException e) {
-            throw new AfsException(ErrorCode.INTERNAL_ERROR, "Failed to delete: " + e.getMessage());
+            throw new AfsException(ErrorCode.INTERNAL_ERROR, "Failed to move: " + e.getMessage());
         }
     }
 
     public FileInfoResponse rename(String path, String newName) {
         try {
-            Path source = rootLocation.resolve(path).normalize();
+            Path source = getAbsolutePath(path);
             Path target = source.resolveSibling(newName);
             validatePath(source);
             validatePath(target);
@@ -111,44 +146,9 @@ public class FileService {
         }
     }
 
-    public FileInfoResponse move(String sourcePath, String targetPath) {
-        try {
-            Path source = rootLocation.resolve(sourcePath).normalize();
-            Path target = rootLocation.resolve(targetPath).normalize();
-            validatePath(source);
-            validatePath(target);
-
-            if (Files.exists(target)) {
-                throw new AfsException(ErrorCode.VALIDATION_FAILED, "Target already exists");
-            }
-
-            Files.move(source, target);
-            return createFileInfo(target);
-        } catch (IOException e) {
-            throw new AfsException(ErrorCode.INTERNAL_ERROR, "Failed to move: " + e.getMessage());
-        }
-    }
-
-    public Resource loadAsResource(String path) {
-        try {
-            Path filePath = rootLocation.resolve(path).normalize();
-            validatePath(filePath);
-            Resource resource = new UrlResource(filePath.toUri());
-
-            if (resource.exists() || resource.isReadable()) {
-                return resource;
-            } else {
-                throw new AfsException(ErrorCode.NOT_FOUND, "File not found");
-            }
-        } catch (MalformedURLException e) {
-            log.error("Failed to read file {}: {}", path, e, e);
-            throw new AfsException(ErrorCode.INTERNAL_ERROR, "Failed to read file");
-        }
-    }
-
     public FileInfoResponse store(MultipartFile file, String path) {
         try {
-            Path targetPath = rootLocation.resolve(path).normalize();
+            Path targetPath = getAbsolutePath(path);
             validatePath(targetPath);
 
             if (Files.exists(targetPath)) {
@@ -186,6 +186,14 @@ public class FileService {
         } catch (IOException e) {
             log.error("Failed to read file info {}: {}", path, e, e);
             throw new AfsException(ErrorCode.INTERNAL_ERROR, "Failed to read file info");
+        }
+    }
+
+    private Path getAbsolutePath(String userGivenPath) {
+        if (userGivenPath.startsWith("/")) {
+            return rootLocation.resolve(userGivenPath.substring(1)).toAbsolutePath();
+        } else {
+            return rootLocation.resolve(userGivenPath).toAbsolutePath();
         }
     }
 
