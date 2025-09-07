@@ -251,10 +251,7 @@ public class SharedFolderValidator {
 
     public static Path validateAndNormalizePath(String pathStr) throws IOException {
         Path path = Path.of(pathStr).normalize().toAbsolutePath();
-        // Block direct symlink targets (content symlinks are caught later)
-        if (Files.isSymbolicLink(path)) {
-            throw new IOException("Path traversal via symbolic link is not allowed: " + path);
-        }
-        return path;
+        // Option: resolve the canonical path (follows symlinks)
+        return path.toRealPath();
     }
 }
