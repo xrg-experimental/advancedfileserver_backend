@@ -33,7 +33,9 @@ public class WebConfig implements WebMvcConfigurer {
         FilterRegistrationBean<CorrelationIdFilter> registrationBean = new FilterRegistrationBean<>();
         registrationBean.setFilter(new CorrelationIdFilter());
         registrationBean.addUrlPatterns("/*");
-        registrationBean.setOrder(1);
+        registrationBean.setDispatcherTypes(DispatcherType.REQUEST, DispatcherType.ASYNC, DispatcherType.ERROR);
+        registrationBean.setName("correlationIdFilter");
+        registrationBean.setOrder(Ordered.HIGHEST_PRECEDENCE);
         return registrationBean;
     }
 }
