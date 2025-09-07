@@ -1,6 +1,7 @@
 package com.sme.afs.service;
 
 import com.sme.afs.dto.*;
+import com.sme.afs.error.ErrorCode;
 import com.sme.afs.exception.AfsException;
 import com.sme.afs.model.Group;
 import com.sme.afs.model.GroupPermission;
@@ -25,7 +26,7 @@ public class GroupService {
     public GroupDTO createGroup(CreateGroupRequest request) {
         // Check if group name already exists
         if (groupRepository.findByName(request.getName()).isPresent()) {
-            throw new AfsException(HttpStatus.CONFLICT, "Group name already exists");
+            throw new AfsException(ErrorCode.VALIDATION_FAILED, "Group name already exists");
         }
 
         Group group = new Group();
@@ -40,7 +41,7 @@ public class GroupService {
     @Transactional
     public GroupDTO updateGroupPermissions(Long groupId, UpdateGroupPermissionsRequest request) {
         Group group = groupRepository.findById(groupId)
-                .orElseThrow(() -> new AfsException(HttpStatus.NOT_FOUND, "Group not found"));
+                .orElseThrow(() -> new AfsException(ErrorCode.NOT_FOUND, "Group not found"));
 
         if (group.getPermissions() == null) {
             GroupPermission permissions = new GroupPermission();
@@ -62,7 +63,7 @@ public class GroupService {
     @Transactional
     public GroupDTO updateGroupBasePath(Long groupId, UpdateGroupRequest request) {
         Group group = groupRepository.findById(groupId)
-                .orElseThrow(() -> new AfsException(HttpStatus.NOT_FOUND, "Group not found"));
+                .orElseThrow(() -> new AfsException(ErrorCode.NOT_FOUND, "Group not found"));
 
         group.setBasePath(request.getBasePath());
         Group savedGroup = groupRepository.save(group);
@@ -72,13 +73,13 @@ public class GroupService {
     @Transactional
     public GroupDTO addUserToGroup(Long groupId, Long userId) {
         Group group = groupRepository.findById(groupId)
-                .orElseThrow(() -> new AfsException(HttpStatus.NOT_FOUND, "Group not found"));
+                .orElseThrow(() -> new AfsException(ErrorCode.NOT_FOUND, "Group not found"));
             
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new AfsException(HttpStatus.NOT_FOUND, "User not found"));
+                .orElseThrow(() -> new AfsException(ErrorCode.NOT_FOUND, "User not found"));
 
         if (group.getUsers().contains(user)) {
-            throw new AfsException(HttpStatus.CONFLICT, "User is already a member of this group");
+            throw new AfsException(ErrorCode.VALIDATION_FAILED, "User is already a member of this group");
         }
 
         group.getUsers().add(user);
@@ -91,13 +92,13 @@ public class GroupService {
     @Transactional
     public GroupDTO removeUserFromGroup(Long groupId, Long userId) {
         Group group = groupRepository.findById(groupId)
-                .orElseThrow(() -> new AfsException(HttpStatus.NOT_FOUND, "Group not found"));
+                .orElseThrow(() -> new AfsException(ErrorCode.NOT_FOUND, "Group not found"));
             
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new AfsException(HttpStatus.NOT_FOUND, "User not found"));
+                .orElseThrow(() -> new AfsException(ErrorCode.NOT_FOUND, "User not found"));
 
         if (!group.getUsers().contains(user)) {
-            throw new AfsException(HttpStatus.NOT_FOUND, "User is not a member of this group");
+            throw new AfsException(ErrorCode.NOT_FOUND, "User is not a member of this group");
         }
 
         group.getUsers().remove(user);
@@ -109,7 +110,7 @@ public class GroupService {
 
     public List<UserDTO> getGroupMembers(Long groupId) {
         Group group = groupRepository.findById(groupId)
-                .orElseThrow(() -> new AfsException(HttpStatus.NOT_FOUND, "Group not found"));
+                .orElseThrow(() -> new AfsException(ErrorCode.NOT_FOUND, "Group not found"));
             
         return group.getUsers().stream()
                 .map(UserDTO::fromUser)

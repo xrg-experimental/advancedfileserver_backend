@@ -1,11 +1,11 @@
 package com.sme.afs.service;
 
 import com.sme.afs.config.SharedFolderProperties;
+import com.sme.afs.error.ErrorCode;
 import com.sme.afs.exception.AfsException;
 import com.sme.afs.model.SharedFolderValidation;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -18,7 +18,6 @@ import java.nio.file.attribute.UserPrincipal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -38,7 +37,7 @@ public class SharedFolderValidator {
         String currentUser = System.getProperty("user.name");
         
         if (configuredOwner != null && !configuredOwner.equals(currentUser)) {
-            throw new AfsException(HttpStatus.FORBIDDEN, 
+            throw new AfsException(ErrorCode.ACCESS_DENIED,
                 String.format("Application must run as configured package owner '%s' but is running as '%s'", 
                     configuredOwner, currentUser));
         }
@@ -50,15 +49,15 @@ public class SharedFolderValidator {
                 UserPrincipal owner = Files.getOwner(basePath);
                 
                 if (!owner.getName().equals(configuredOwnerFull)) {
-                    throw new AfsException(HttpStatus.FORBIDDEN,
+                    throw new AfsException(ErrorCode.ACCESS_DENIED,
                         String.format("Path %s is owned by '%s' but must be owned by package owner '%s'",
                             path, owner.getName(), configuredOwnerFull));
                 }
 
-                // Verify full access for owner
+                // Verify full access for the owner
                 checkFullAccessForOwner(path, basePath, currentUser);
             } catch (IOException e) {
-                throw new AfsException(HttpStatus.FORBIDDEN,
+                throw new AfsException(ErrorCode.ACCESS_DENIED,
                     String.format("Cannot verify package owner permissions for path %s: %s",
                         path, e.getMessage()));
             }
@@ -73,7 +72,7 @@ public class SharedFolderValidator {
             boolean canWrite = Files.isWritable(basePath);
             boolean canExecute = Files.isExecutable(basePath);
             if (!canRead || !canWrite || !canExecute) {
-                throw new AfsException(HttpStatus.FORBIDDEN,
+                throw new AfsException(ErrorCode.ACCESS_DENIED,
                         String.format("Package owner '%s' must have full access to path: %s (Read: %b, Write: %b, Execute: %b)",
                                 currentUser, path, canRead, canWrite, canExecute));
             }
@@ -84,7 +83,7 @@ public class SharedFolderValidator {
                     perms.contains(PosixFilePermission.OWNER_WRITE) &&
                     perms.contains(PosixFilePermission.OWNER_EXECUTE);
             if (!hasFullAccess) {
-                throw new AfsException(HttpStatus.FORBIDDEN,
+                throw new AfsException(ErrorCode.ACCESS_DENIED,
                         String.format("Package owner '%s' must have full access to path: %s",
                                 currentUser, path));
             }
@@ -110,12 +109,12 @@ public class SharedFolderValidator {
         if (tempPath != null && !tempPath.isEmpty()) {
             validatePath(tempPath, "Temp path");
             
-            // Ensure temp path is not under any base path
+            // Ensure the temp path is not under any base path
             Path normalizedTempPath = Path.of(tempPath).normalize();
             for (String basePath : basePaths) {
                 Path normalizedBasePath = Path.of(basePath).normalize();
                 if (normalizedTempPath.startsWith(normalizedBasePath)) {
-                    throw new AfsException(HttpStatus.BAD_REQUEST, 
+                    throw new AfsException(ErrorCode.VALIDATION_FAILED,
                         "Temp path cannot be under a base path: " + tempPath);
                 }
             }
@@ -125,12 +124,12 @@ public class SharedFolderValidator {
     private List<String> getBasePaths() {
         List<String> basePaths = properties.getBasePaths();
         if (basePaths.size() < properties.getMinBasePaths()) {
-            throw new AfsException(HttpStatus.BAD_REQUEST,
+            throw new AfsException(ErrorCode.VALIDATION_FAILED,
                 String.format("At least %d base path(s) must be configured", properties.getMinBasePaths()));
         }
 
         if (basePaths.size() > properties.getMaxBasePaths()) {
-            throw new AfsException(HttpStatus.BAD_REQUEST,
+            throw new AfsException(ErrorCode.VALIDATION_FAILED,
                 String.format("Maximum number of base paths (%d) exceeded", properties.getMaxBasePaths()));
         }
 
@@ -140,7 +139,7 @@ public class SharedFolderValidator {
             for (int j = i + 1; j < basePaths.size(); j++) {
                 Path otherPath = Path.of(basePaths.get(j)).normalize();
                 if (basePath.startsWith(otherPath) || otherPath.startsWith(basePath)) {
-                    throw new AfsException(HttpStatus.BAD_REQUEST,
+                    throw new AfsException(ErrorCode.VALIDATION_FAILED,
                         "Base paths cannot overlap: " + basePath + " and " + otherPath);
                 }
             }
@@ -166,17 +165,17 @@ public class SharedFolderValidator {
                     log.info("Created required directory: {}", path);
                 }
                 if (!Files.isDirectory(path)) {
-                    throw new AfsException(HttpStatus.BAD_REQUEST, 
+                    throw new AfsException(ErrorCode.VALIDATION_FAILED,
                         "Required path exists but is not a directory: " + path);
                 }
                 // Verify permissions
                 if (!Files.isReadable(path) || !Files.isWritable(path)) {
-                    throw new AfsException(HttpStatus.BAD_REQUEST,
+                    throw new AfsException(ErrorCode.VALIDATION_FAILED,
                         "Required directory lacks proper permissions: " + path);
                 }
                 log.debug("Validated required directory: {}", path);
             } catch (IOException e) {
-                throw new AfsException(HttpStatus.INTERNAL_SERVER_ERROR,
+                throw new AfsException(ErrorCode.INTERNAL_ERROR,
                     "Failed to create/validate required directory " + path + ": " + e.getMessage());
             }
         }
@@ -184,63 +183,63 @@ public class SharedFolderValidator {
 
     public SharedFolderValidation validatePath(String path, String pathType) {
         if (path == null || path.trim().isEmpty()) {
-            throw new AfsException(HttpStatus.BAD_REQUEST, pathType + " cannot be empty");
+            throw new AfsException(ErrorCode.VALIDATION_FAILED, pathType + " cannot be empty");
         }
 
         try {
-            // Normalize and get absolute path
+            // Normalize and get the absolute path
             Path normalizedPath = validateAndNormalizePath(path);
 
             // Security checks
             if (!normalizedPath.startsWith(normalizedPath.getRoot())) {
-                throw new AfsException(HttpStatus.BAD_REQUEST, "Invalid path: must be absolute");
+                throw new AfsException(ErrorCode.VALIDATION_FAILED, "Invalid path: must be absolute");
             }
             
             if (path.contains("..") || !toUnixPathString(normalizedPath).equals(path)) {
-                throw new AfsException(HttpStatus.BAD_REQUEST, "Path traversal is not allowed");
+                throw new AfsException(ErrorCode.VALIDATION_FAILED, "Path traversal is not allowed");
             }
 
             // Existence check
             if (!Files.exists(normalizedPath)) {
-                throw new AfsException(HttpStatus.BAD_REQUEST, pathType + " does not exist: " + normalizedPath);
+                throw new AfsException(ErrorCode.NOT_FOUND, pathType + " does not exist: " + normalizedPath);
             }
 
             // Directory check
             if (!Files.isDirectory(normalizedPath)) {
-                throw new AfsException(HttpStatus.BAD_REQUEST, pathType + " must be a directory");
+                throw new AfsException(ErrorCode.VALIDATION_FAILED, pathType + " must be a directory");
             }
 
             // Permission checks
             if (!Files.isReadable(normalizedPath)) {
-                throw new AfsException(HttpStatus.FORBIDDEN, pathType + " is not readable");
+                throw new AfsException(ErrorCode.ACCESS_DENIED, pathType + " is not readable");
             }
             
             if (!Files.isWritable(normalizedPath)) {
-                throw new AfsException(HttpStatus.FORBIDDEN, pathType + " is not writable");
+                throw new AfsException(ErrorCode.ACCESS_DENIED, pathType + " is not writable");
             }
             
             if (!Files.isExecutable(normalizedPath)) {
-                throw new AfsException(HttpStatus.FORBIDDEN, pathType + " is not accessible");
+                throw new AfsException(ErrorCode.ACCESS_DENIED, pathType + " is not accessible");
             }
 
             // Verify we can list contents
             try {
                 Files.list(normalizedPath).close();
             } catch (SecurityException e) {
-                throw new AfsException(HttpStatus.FORBIDDEN, pathType + " directory listing denied");
+                throw new AfsException(ErrorCode.ACCESS_DENIED, pathType + " directory listing denied");
             }
         } catch (SecurityException e) {
-            throw new AfsException(HttpStatus.FORBIDDEN, 
+            throw new AfsException(ErrorCode.ACCESS_DENIED,
                 "Security error accessing " + pathType + ": " + e.getMessage());
         } catch (IOException e) {
-            throw new AfsException(HttpStatus.INTERNAL_SERVER_ERROR,
+            throw new AfsException(ErrorCode.INTERNAL_ERROR,
                 "IO error validating " + pathType + ": " + e.getMessage());
         }
 
         try {
             Path normalizedPath = Path.of(path).normalize().toRealPath();
             if (!Files.exists(normalizedPath)) {
-                throw new AfsException(HttpStatus.BAD_REQUEST, pathType + " does not exist: " + normalizedPath);
+                throw new AfsException(ErrorCode.NOT_FOUND, pathType + " does not exist: " + normalizedPath);
             }
         
             SharedFolderValidation validation = new SharedFolderValidation();
@@ -291,21 +290,8 @@ public class SharedFolderValidator {
         
             return validation;
         } catch (IOException e) {
-            throw new AfsException(HttpStatus.BAD_REQUEST, "Error validating " + pathType + ": " + e.getMessage());
+            throw new AfsException(ErrorCode.VALIDATION_FAILED, "Error validating " + pathType + ": " + e.getMessage());
         }
-    }
-
-    public List<Path> getNormalizedBasePaths() {
-        return properties.getBasePaths().stream()
-            .map(path -> {
-                try {
-                    return Path.of(path).normalize().toRealPath();
-                } catch (IOException e) {
-                    throw new AfsException(HttpStatus.INTERNAL_SERVER_ERROR, 
-                        "Failed to normalize path: " + path);
-                }
-            })
-            .collect(Collectors.toList());
     }
 
     public static Path validateAndNormalizePath(String pathStr) throws IOException {

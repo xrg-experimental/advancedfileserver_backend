@@ -1,20 +1,33 @@
 package com.sme.afs.exception;
 
-import lombok.Getter;
+import com.sme.afs.error.ErrorCode;
+import com.sme.afs.error.HasErrorCode;
 import org.springframework.http.HttpStatus;
 
-@Getter
-public class AfsException extends RuntimeException {
-    private final HttpStatus status;
-    private final String message;
+public class AfsException extends RuntimeException implements HasErrorCode {
+    private final ErrorCode errorCode;
 
-    public AfsException(String message) {
-        this(HttpStatus.INTERNAL_SERVER_ERROR, message);
+    public AfsException(ErrorCode errorCode) {
+        super();
+        this.errorCode = errorCode;
     }
 
-    public AfsException(HttpStatus status, String message) {
+    public AfsException(ErrorCode errorCode, String message) {
         super(message);
-        this.status = status;
-        this.message = message;
+        this.errorCode = errorCode;
+    }
+
+    public AfsException(ErrorCode errorCode, String message, Throwable cause) {
+        super(message, cause);
+        this.errorCode = errorCode;
+    }
+
+    @Override
+    public ErrorCode getErrorCode() {
+        return errorCode;
+    }
+
+    public HttpStatus getStatus() {
+        return errorCode.status;
     }
 }

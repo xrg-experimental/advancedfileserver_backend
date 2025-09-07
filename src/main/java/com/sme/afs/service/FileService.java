@@ -3,11 +3,11 @@ package com.sme.afs.service;
 import com.sme.afs.config.SharedFolderConfig;
 import com.sme.afs.dto.FileInfoResponse;
 import com.sme.afs.dto.FileListResponse;
+import com.sme.afs.error.ErrorCode;
 import com.sme.afs.exception.AfsException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.util.FileSystemUtils;
 import org.springframework.web.multipart.MultipartFile;
@@ -50,7 +50,7 @@ public class FileService {
 
             return response;
         } catch (IOException e) {
-            throw new AfsException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to list directory: " + e.getMessage());
+            throw new AfsException(ErrorCode.INTERNAL_ERROR, "Failed to list directory: " + e.getMessage());
         }
     }
 
@@ -66,13 +66,13 @@ public class FileService {
             validatePath(dirPath);
 
             if (Files.exists(dirPath)) {
-                throw new AfsException(HttpStatus.CONFLICT, "Directory already exists");
+                throw new AfsException(ErrorCode.VALIDATION_FAILED, "Directory already exists");
             }
 
             Files.createDirectories(dirPath);
             return createFileInfo(dirPath);
         } catch (IOException e) {
-            throw new AfsException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to create directory: " + e.getMessage());
+            throw new AfsException(ErrorCode.INTERNAL_ERROR, "Failed to create directory: " + e.getMessage());
         }
     }
 
@@ -87,7 +87,7 @@ public class FileService {
                 Files.delete(filePath);
             }
         } catch (IOException e) {
-            throw new AfsException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to delete: " + e.getMessage());
+            throw new AfsException(ErrorCode.INTERNAL_ERROR, "Failed to delete: " + e.getMessage());
         }
     }
 
@@ -99,13 +99,13 @@ public class FileService {
             validatePath(target);
 
             if (Files.exists(target)) {
-                throw new AfsException(HttpStatus.CONFLICT, "Target already exists");
+                throw new AfsException(ErrorCode.VALIDATION_FAILED, "Target already exists");
             }
 
             Files.move(source, target);
             return createFileInfo(target);
         } catch (IOException e) {
-            throw new AfsException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to rename: " + e.getMessage());
+            throw new AfsException(ErrorCode.INTERNAL_ERROR, "Failed to rename: " + e.getMessage());
         }
     }
 
@@ -117,13 +117,13 @@ public class FileService {
             validatePath(target);
 
             if (Files.exists(target)) {
-                throw new AfsException(HttpStatus.CONFLICT, "Target already exists");
+                throw new AfsException(ErrorCode.VALIDATION_FAILED, "Target already exists");
             }
 
             Files.move(source, target);
             return createFileInfo(target);
         } catch (IOException e) {
-            throw new AfsException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to move: " + e.getMessage());
+            throw new AfsException(ErrorCode.INTERNAL_ERROR, "Failed to move: " + e.getMessage());
         }
     }
 
@@ -136,10 +136,10 @@ public class FileService {
             if (resource.exists() || resource.isReadable()) {
                 return resource;
             } else {
-                throw new AfsException(HttpStatus.NOT_FOUND, "File not found: " + path);
+                throw new AfsException(ErrorCode.NOT_FOUND, "File not found: " + path);
             }
         } catch (MalformedURLException e) {
-            throw new AfsException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to read file: " + e.getMessage());
+            throw new AfsException(ErrorCode.INTERNAL_ERROR, "Failed to read file: " + e.getMessage());
         }
     }
 
@@ -149,13 +149,13 @@ public class FileService {
             validatePath(targetPath);
 
             if (Files.exists(targetPath)) {
-                throw new AfsException(HttpStatus.CONFLICT, "File already exists");
+                throw new AfsException(ErrorCode.VALIDATION_FAILED, "File already exists");
             }
 
             Files.copy(file.getInputStream(), targetPath, StandardCopyOption.REPLACE_EXISTING);
             return createFileInfo(targetPath);
         } catch (IOException e) {
-            throw new AfsException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to store file: " + e.getMessage());
+            throw new AfsException(ErrorCode.INTERNAL_ERROR, "Failed to store file: " + e.getMessage());
         }
     }
 
@@ -180,13 +180,13 @@ public class FileService {
 
             return info;
         } catch (IOException e) {
-            throw new AfsException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to read file info: " + e.getMessage());
+            throw new AfsException(ErrorCode.INTERNAL_ERROR, "Failed to read file info: " + e.getMessage());
         }
     }
 
     private void validatePath(Path path) {
         if (!path.normalize().startsWith(rootLocation)) {
-            throw new AfsException(HttpStatus.BAD_REQUEST, "Path is outside of root directory");
+            throw new AfsException(ErrorCode.VALIDATION_FAILED, "Path is outside of root directory");
         }
     }
 }

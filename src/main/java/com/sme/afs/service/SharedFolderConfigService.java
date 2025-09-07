@@ -1,6 +1,7 @@
 package com.sme.afs.service;
 
 import com.sme.afs.config.SharedFolderProperties;
+import com.sme.afs.error.ErrorCode;
 import com.sme.afs.exception.AfsException;
 import com.sme.afs.model.SharedFolderConfig;
 import com.sme.afs.model.SharedFolderValidation;
@@ -65,7 +66,7 @@ public class SharedFolderConfigService {
                 
         } catch (Exception e) {
             log.error("Failed to initialize configuration from properties", e);
-            throw new AfsException(HttpStatus.INTERNAL_SERVER_ERROR, 
+            throw new AfsException(ErrorCode.INTERNAL_ERROR,
                 "Failed to initialize configuration: " + e.getMessage());
         }
     }
@@ -86,7 +87,7 @@ public class SharedFolderConfigService {
         }
         
         if (!errors.isEmpty()) {
-            throw new AfsException(HttpStatus.BAD_REQUEST, 
+            throw new AfsException(ErrorCode.VALIDATION_FAILED,
                 "Configuration validation failed:\n" + String.join("\n", errors));
         }
     }
@@ -102,14 +103,14 @@ public class SharedFolderConfigService {
         if (existing.isPresent()) {
             SharedFolderConfig existingConfig = existing.get();
             if (existingConfig.isBasePath() != isBasePath || existingConfig.isTempPath() != isTempPath) {
-                throw new AfsException(HttpStatus.CONFLICT, 
+                throw new AfsException(ErrorCode.VALIDATION_FAILED,
                     "Path already exists with different type: " + normalizedPathStr);
             }
         }
 
         // Validate path type conflicts
         if (isBasePath && isTempPath) {
-            throw new AfsException(HttpStatus.BAD_REQUEST, 
+            throw new AfsException(ErrorCode.VALIDATION_FAILED,
                 "Path cannot be both base path and temp path");
         }
 
@@ -117,7 +118,7 @@ public class SharedFolderConfigService {
         if (isTempPath) {
             Optional<SharedFolderConfig> existingTemp = configRepository.findByIsTempPath(true);
             if (existingTemp.isPresent() && !existingTemp.get().getPath().equals(normalizedPathStr)) {
-                throw new AfsException(HttpStatus.CONFLICT, 
+                throw new AfsException(ErrorCode.VALIDATION_FAILED,
                     "Another temp path already exists: " + existingTemp.get().getPath());
             }
         }
@@ -127,7 +128,7 @@ public class SharedFolderConfigService {
             List<SharedFolderConfig> basePaths = configRepository.findByIsBasePath(true);
             for (SharedFolderConfig baseConfig : basePaths) {
                 if (normalizedPathStr.startsWith(baseConfig.getPath())) {
-                    throw new AfsException(HttpStatus.BAD_REQUEST,
+                    throw new AfsException(ErrorCode.VALIDATION_FAILED,
                         "Temp path cannot be under a base path: " + baseConfig.getPath());
                 }
             }
@@ -139,7 +140,7 @@ public class SharedFolderConfigService {
             for (SharedFolderConfig baseConfig : basePaths) {
                 if (normalizedPathStr.startsWith(baseConfig.getPath()) || 
                     baseConfig.getPath().startsWith(normalizedPathStr)) {
-                    throw new AfsException(HttpStatus.BAD_REQUEST,
+                    throw new AfsException(ErrorCode.VALIDATION_FAILED,
                         "Base paths cannot contain each other: " + baseConfig.getPath());
                 }
             }
@@ -200,6 +201,6 @@ public class SharedFolderConfigService {
 
     public SharedFolderConfig getTempPath() {
         return configRepository.findByIsTempPath(true)
-            .orElseThrow(() -> new AfsException(HttpStatus.NOT_FOUND, "No temp path configured"));
+            .orElseThrow(() -> new AfsException(ErrorCode.NOT_FOUND, "No temp path configured"));
     }
 }

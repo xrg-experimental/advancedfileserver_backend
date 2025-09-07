@@ -2,17 +2,20 @@ package com.sme.afs.security;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import com.sme.afs.dto.ErrorResponse;
+import com.sme.afs.dto.ProblemResponse;
+import com.sme.afs.error.ErrorCode;
 import com.sme.afs.exception.session.SessionException;
+import com.sme.afs.web.CorrelationIdFilter;
 import io.jsonwebtoken.Claims;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import com.sme.afs.service.SessionService;
-import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -28,10 +31,11 @@ import java.util.stream.Collectors;
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
+    private static final String BEARER_PREFIX = "Bearer ";
+    private static final MediaType PROBLEM_JSON = MediaType.valueOf("application/problem+json");
     private final JwtService jwtService;
     private final SessionService sessionService;
     private final ObjectMapper objectMapper;
-    private static final String BEARER_PREFIX = "Bearer ";
 
     // Constructor for dependency injection
     public JwtAuthenticationFilter(JwtService jwtService, SessionService sessionService, ObjectMapper objectMapper) {
@@ -59,14 +63,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             final String sessionId = jwtService.extractSessionId(jwt);
 
             if (username == null || sessionId == null) {
-                sendErrorResponse(response, HttpServletResponse.SC_UNAUTHORIZED, "Invalid token format");
+                respondWithProblemDetails(response, ErrorCode.SESSION_INVALID, "Invalid token format");
                 return;
             }
 
             if (SecurityContextHolder.getContext().getAuthentication() == null) {
-                // Validate token first (includes blacklist check)
+                // Validate token first (includes denylist check)
                 if (!jwtService.validateToken(jwt, username)) {
-                    sendErrorResponse(response, HttpServletResponse.SC_UNAUTHORIZED, "Invalid or expired token");
+                    respondWithProblemDetails(response, ErrorCode.ACCESS_DENIED, "Invalid or expired token");
                     return;
                 }
 
@@ -92,7 +96,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(authToken);
                 } catch (SessionException ex) {
-                    sendErrorResponse(response, ex.getStatus().value(), ex.getMessage());
+                    // Prefer to use error code if available
+                    try {
+                        respondWithProblemDetails(response, ex.getErrorCode(), ex.getMessage());
+                    } catch (NoSuchMethodError | Exception ignored) {
+                        // Fallback to access denied if error code not available at runtime
+                        respondWithProblemDetails(response, ErrorCode.ACCESS_DENIED, ex.getMessage());
+                    }
                     return;
                 }
             }
@@ -100,19 +110,27 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             filterChain.doFilter(request, response);
         } catch (Exception e) {
             log.error("Authentication error occurred", e);
-            sendErrorResponse(response, HttpServletResponse.SC_UNAUTHORIZED, "Authentication failed");
+            respondWithProblemDetails(response, ErrorCode.ACCESS_DENIED, "Authentication failed");
         }
     }
 
-    private void sendErrorResponse(HttpServletResponse response, int status, String message) throws IOException {
-        ErrorResponse errorResponse = new ErrorResponse(
-                status,
-                HttpStatus.valueOf(status).getReasonPhrase(),
-                message,
-                "N/A"  // Filter doesn't have access to the request URI
+    private ProblemResponse createProblem(ErrorCode errorCode, String detail) {
+        String correlationId = MDC.get(CorrelationIdFilter.CORRELATION_ID);
+        return new ProblemResponse(
+                "https://errors.afs/" + errorCode.code,
+                errorCode.title,
+                errorCode.status.value(),
+                detail,
+                "urn:uuid:" + correlationId,
+                errorCode.code,
+                correlationId
         );
-        response.setStatus(status);
-        response.setContentType("application/json");
-        response.getWriter().write(objectMapper.writeValueAsString(errorResponse));
+    }
+
+    private void respondWithProblemDetails(HttpServletResponse response, ErrorCode errorCode, String message) throws IOException {
+        ProblemResponse problemResponse = createProblem(errorCode, message);
+        response.setStatus(errorCode.status.value());
+        response.setContentType(PROBLEM_JSON.toString());
+        response.getWriter().write(objectMapper.writeValueAsString(problemResponse));
     }
 }

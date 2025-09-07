@@ -1,9 +1,14 @@
 package com.sme.afs.exception.session;
 
-import org.springframework.http.HttpStatus;
+import com.sme.afs.error.ErrorCode;
+import com.sme.afs.exception.AfsException;
 
-public class SessionExpiredException extends SessionException {
-    public SessionExpiredException(String sessionId) {
-        super(HttpStatus.UNAUTHORIZED, String.format("Session has expired: %s", sessionId));
+public class SessionExpiredException extends AfsException {
+    public SessionExpiredException() {
+        super(ErrorCode.SESSION_EXPIRED);
+    }
+
+    public SessionExpiredException(String message) {
+        super(ErrorCode.SESSION_EXPIRED, message);
     }
 }

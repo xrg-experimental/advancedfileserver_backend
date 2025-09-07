@@ -1,6 +1,7 @@
 package com.sme.afs.controller;
 
 import com.sme.afs.dto.GroupDTO;
+import com.sme.afs.error.ErrorCode;
 import com.sme.afs.exception.AfsException;
 import com.sme.afs.model.Group;
 import com.sme.afs.service.GroupService;
@@ -46,7 +47,7 @@ class GroupMembershipControllerTest {
     @Test
     void addUserToGroup_NotAdmin_ThrowsException() {
         when(groupService.addUserToGroup(GROUP_ID, USER_ID))
-            .thenThrow(new AfsException(HttpStatus.FORBIDDEN, "Admin access required"));
+            .thenThrow(new AfsException(ErrorCode.ACCESS_DENIED, "Admin access required"));
 
         AfsException exception = assertThrows(AfsException.class,
             () -> controller.addUserToGroup(GROUP_ID, USER_ID));
@@ -58,7 +59,7 @@ class GroupMembershipControllerTest {
     @Test
     void removeUserFromGroup_NotAdmin_ThrowsException() {
         when(groupService.removeUserFromGroup(GROUP_ID, USER_ID))
-            .thenThrow(new AfsException(HttpStatus.FORBIDDEN, "Admin access required"));
+            .thenThrow(new AfsException(ErrorCode.ACCESS_DENIED, "Admin access required"));
 
         AfsException exception = assertThrows(AfsException.class,
             () -> controller.removeUserFromGroup(GROUP_ID, USER_ID));
@@ -115,7 +116,7 @@ class GroupMembershipControllerTest {
     @Test
     void getGroupMembers_GroupNotFound() {
         when(groupService.getGroupMembers(GROUP_ID))
-            .thenThrow(new AfsException(HttpStatus.NOT_FOUND, "Group not found"));
+            .thenThrow(new AfsException(ErrorCode.NOT_FOUND, "Group not found"));
 
         AfsException exception = assertThrows(AfsException.class,
             () -> controller.getGroupMembers(GROUP_ID));

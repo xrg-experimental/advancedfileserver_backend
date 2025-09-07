@@ -1,10 +1,15 @@
 package com.sme.afs.exception.session;
 
+import com.sme.afs.error.ErrorCode;
+import com.sme.afs.exception.AfsException;
 import org.springframework.http.HttpStatus;
 
-public class MaxSessionsExceededException extends SessionException {
-    public MaxSessionsExceededException(String username, int maxSessions) {
-        super(HttpStatus.TOO_MANY_REQUESTS, 
-            String.format("User '%s' has exceeded maximum allowed sessions (%d)", username, maxSessions));
+public class MaxSessionsExceededException extends AfsException {
+    public MaxSessionsExceededException() {
+        super(ErrorCode.SESSION_MAX_EXCEEDED);
+    }
+
+    public MaxSessionsExceededException(String message) {
+        super(ErrorCode.SESSION_MAX_EXCEEDED, message);
     }
 }
