@@ -61,7 +61,7 @@ public class SharedFolderConfigService {
         Optional<SharedFolderConfig> existing = configRepository.findByPath(normalizedPathStr);
         SharedFolderConfig config = existing.orElse(new SharedFolderConfig());
 
-        config.setPath(path);
+        config.setPath(normalizedPathStr);
 
         LocalDateTime now = LocalDateTime.now();
         
@@ -84,7 +84,7 @@ public class SharedFolderConfigService {
         validation.setCheckedBy(user);
         
         try {
-            SharedFolderValidation pathValidation = validator.validatePath(path);
+            SharedFolderValidation pathValidation = validator.validatePath(normalizedPathStr);
             validation.setValid(pathValidation.isValid());
             validation.setErrorMessage(pathValidation.getErrorMessage());
             validation.setCanRead(pathValidation.getCanRead());
