@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.file.Path;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -29,30 +30,6 @@ public class SharedFolderConfigService {
     private final SharedFolderProperties properties;
 
     @Transactional
-    public void initializeFromProperties(User systemUser) {
-        try {
-            // Pre-validate configuration
-            validator.validateConfiguration();
-            
-            // Add the base path from properties
-            String basePath = properties.getBasePath();
-            if (basePath != null && !basePath.isEmpty()) {
-                createOrUpdateConfig(basePath, systemUser);
-            }
-
-            // Final validation of saved configuration
-            validator.validateConfiguration();
-            
-            log.info("Successfully initialized base path configuration");
-                
-        } catch (Exception e) {
-            log.error("Failed to initialize configuration from properties", e);
-            throw new AfsException(ErrorCode.INTERNAL_ERROR,
-                    "Failed to initialize configuration", e);
-        }
-    }
-
-    @Transactional
     public SharedFolderConfig createOrUpdateConfig(String path, User user) {
         // Normalize the path before validation
         Path normalizedPath = Path.of(path).normalize().toAbsolutePath();
@@ -64,12 +41,12 @@ public class SharedFolderConfigService {
         config.setPath(normalizedPathStr);
 
         LocalDateTime now = LocalDateTime.now();
-        
+
         if (config.getId() == null) {
             config.setCreatedAt(now);
             config.setCreatedBy(user);
         }
-        
+
         config.setModifiedAt(now);
         config.setModifiedBy(user);
 
@@ -78,11 +55,11 @@ public class SharedFolderConfigService {
         // Create or update validation status
         SharedFolderValidation validation = validationRepository.findByConfigId(config.getId())
             .orElse(new SharedFolderValidation());
-        
+
         validation.setConfig(config);
         validation.setLastCheckedAt(now);
         validation.setCheckedBy(user);
-        
+
         try {
             SharedFolderValidation pathValidation = validator.validatePath(normalizedPathStr);
             validation.setValid(pathValidation.isValid());
@@ -98,11 +75,84 @@ public class SharedFolderConfigService {
         }
 
         validationRepository.save(validation);
-        
+
         return config;
     }
 
     public List<SharedFolderConfig> getAllConfigs() {
         return configRepository.findAll();
+    }
+
+    @Transactional
+    public void initializeFromProperties(User systemUser) {
+        try {
+            // Pre-validate configuration
+            validator.validateConfiguration();
+
+            // Add the base path from properties
+            String basePath = properties.getBasePath();
+            if (basePath != null && !basePath.isEmpty()) {
+                createOrUpdateConfig(basePath, systemUser);
+            }
+
+            // Final validation of saved configuration
+            validator.validateConfiguration();
+
+        } catch (Exception e) {
+            log.error("Failed to initialize configuration from properties", e);
+            throw new AfsException(ErrorCode.INTERNAL_ERROR,
+                    "Failed to initialize configuration", e);
+        }
+    }
+
+    @Transactional
+    public List<SharedFolderValidation> revalidateAll() {
+        log.info("Starting revalidation of all shared folder configurations");
+
+        List<SharedFolderConfig> allConfigs = configRepository.findAll();
+        log.info("Found {} configurations to revalidate", allConfigs.size());
+
+        int successCount = 0;
+        int errorCount = 0;
+
+        List<SharedFolderValidation> validations = new ArrayList<>();
+        for (SharedFolderConfig config : allConfigs) {
+            // Validate the path using the existing validator
+            SharedFolderValidation validation = validator.validatePath(config.getPath());
+            validation.setLastCheckedAt(LocalDateTime.now());
+
+            try {
+                log.debug("Revalidating configuration with path: {}", config.getPath());
+
+                // Save the updated configuration
+                configRepository.save(config);
+
+                if (validation.isValid()) {
+                    successCount++;
+                    log.debug("Successfully revalidated configuration: {}", config.getPath());
+                } else {
+                    errorCount++;
+                    log.warn("Validation failed for configuration {}: {}", config.getPath(), validation.getErrorMessage());
+                }
+            } catch (Exception e) {
+                errorCount++;
+                log.error("Error during revalidation of configuration {}: {}", config.getPath(), e.getMessage(), e);
+
+                validation.setValid(false);
+                validation.setErrorMessage("Validation error: " + e.getMessage());
+
+                try {
+                    configRepository.save(config);
+                } catch (Exception saveException) {
+                    log.error("Failed to save error state for configuration {}: {}", config.getPath(), saveException.getMessage());
+                }
+            }
+
+            validations.add(validation);
+        }
+
+        log.info("Revalidation completed. Success: {}, Errors: {}, Total: {}",
+                successCount, errorCount, allConfigs.size());
+        return validations;
     }
 }
