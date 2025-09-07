@@ -66,7 +66,7 @@ public class SharedFolderConfigService {
         } catch (Exception e) {
             log.error("Failed to initialize configuration from properties", e);
             throw new AfsException(ErrorCode.INTERNAL_ERROR,
-                "Failed to initialize configuration: " + e.getMessage());
+                    "Failed to initialize configuration", e);
         }
     }
 
