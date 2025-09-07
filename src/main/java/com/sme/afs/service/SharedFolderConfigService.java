@@ -117,42 +117,67 @@ public class SharedFolderConfigService {
 
         List<SharedFolderValidation> validations = new ArrayList<>();
         for (SharedFolderConfig config : allConfigs) {
-            // Validate the path using the existing validator
-            SharedFolderValidation validation = validator.validatePath(config.getPath());
-            validation.setLastCheckedAt(LocalDateTime.now());
-
             try {
                 log.debug("Revalidating configuration with path: {}", config.getPath());
+                SharedFolderValidation fresh = validator.validatePath(config.getPath());
 
-                // Save the updated configuration
-                configRepository.save(config);
+                SharedFolderValidation entity = validationRepository.findByConfigId(config.getId())
+                    .orElse(new SharedFolderValidation());
+                entity.setConfig(config);
+                entity.setLastCheckedAt(LocalDateTime.now());
+                entity.setCheckedBy(
+                    Optional.ofNullable(config.getModifiedBy())
+                            .orElse(config.getCreatedBy())
+                );
+                entity.setValid(fresh.isValid());
+                entity.setErrorMessage(fresh.getErrorMessage());
+                entity.setCanRead(fresh.getCanRead());
+                entity.setCanWrite(fresh.getCanWrite());
+                entity.setCanExecute(fresh.getCanExecute());
+                entity.setPermissionCheckError(fresh.getPermissionCheckError());
 
-                if (validation.isValid()) {
+                validationRepository.save(entity);
+                validations.add(entity);
+
+                if (entity.isValid()) {
                     successCount++;
-                    log.debug("Successfully revalidated configuration: {}", config.getPath());
                 } else {
                     errorCount++;
-                    log.warn("Validation failed for configuration {}: {}", config.getPath(), validation.getErrorMessage());
+                    log.warn(
+                        "Validation failed for configuration {}: {}", 
+                        config.getPath(), 
+                        entity.getErrorMessage()
+                    );
                 }
             } catch (Exception e) {
                 errorCount++;
-                log.error("Error during revalidation of configuration {}: {}", config.getPath(), e.getMessage(), e);
+                log.error(
+                    "Error during revalidation of configuration {}: {}", 
+                    config.getPath(), 
+                    e.getMessage(), 
+                    e
+                );
 
-                validation.setValid(false);
-                validation.setErrorMessage("Validation error: " + e.getMessage());
+                SharedFolderValidation entity = validationRepository.findByConfigId(config.getId())
+                    .orElse(new SharedFolderValidation());
+                entity.setConfig(config);
+                entity.setLastCheckedAt(LocalDateTime.now());
+                entity.setCheckedBy(
+                    Optional.ofNullable(config.getModifiedBy())
+                            .orElse(config.getCreatedBy())
+                );
+                entity.setValid(false);
+                entity.setErrorMessage("Validation error: " + e.getMessage());
 
-                try {
-                    configRepository.save(config);
-                } catch (Exception saveException) {
-                    log.error("Failed to save error state for configuration {}: {}", config.getPath(), saveException.getMessage());
-                }
+                validationRepository.save(entity);
+                validations.add(entity);
             }
-
-            validations.add(validation);
         }
 
-        log.info("Revalidation completed. Success: {}, Errors: {}, Total: {}",
-                successCount, errorCount, allConfigs.size());
+        log.info(
+            "Revalidation completed. Success: {}, Errors: {}, Total: {}",
+            successCount, errorCount, allConfigs.size()
+        );
         return validations;
     }
 }
