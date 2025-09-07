@@ -52,8 +52,9 @@ public class SharedFolderConfigController {
                 .anyMatch(v -> v.getLastCheckedAt() == null || v.getLastCheckedAt().isBefore(staleThreshold));
 
         if (hasStaleValidations) {
-            // Revalidate and persist, then return fresh rows
-            validations = configService.revalidateAll();
+            // Revalidate and then return freshly persisted rows
+            configService.revalidateAll();
+            validations = validationRepository.findAll();
         }
         
         return ResponseEntity.ok(SharedFolderConfigResponse.ofValidations(validations));
