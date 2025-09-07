@@ -23,43 +23,89 @@ public class SharedFolderValidator {
     
     private final SharedFolderProperties properties;
 
-    private void validatePackageOwner() {
-        if (!properties.isEnforcePackageOwner()) {
-            log.warn("Package owner validation is disabled - this is not recommended for production!");
-            return;
+    public static Path validateAndNormalizePath(String pathStr) throws IOException {
+        Path path = Path.of(pathStr).normalize().toAbsolutePath();
+        // Option: resolve the canonical path (follows symlinks)
+        return path.toRealPath();
+    }
+
+    public void validateConfiguration() {
+        // Validate package owner first
+        validatePackageOwner();
+
+        // Validate/create the base path
+        String basePath = properties.getBasePath();
+        if (basePath == null || basePath.isBlank()) {
+            throw new AfsException(ErrorCode.VALIDATION_FAILED, "basePath is not configured");
         }
-
-        String configuredOwner = properties.getPackageOwner();
-        String configuredOwnerFull = properties.getPackageOwnerFull();
-        String currentUser = System.getProperty("user.name");
-        
-        if (configuredOwner != null && !configuredOwner.equals(currentUser)) {
-            throw new AfsException(ErrorCode.ACCESS_DENIED,
-                String.format("Application must run as configured package owner '%s' but is running as '%s'", 
-                    configuredOwner, currentUser));
+        if (properties.isCreateMissingDirectories()) {
+            validateRequiredStructure(basePath);
         }
+        validatePath(basePath);
+    }
 
-        // Validate the base path is accessible by package owner
-        String path = properties.getBasePath();
-        if (path != null && !path.isBlank()) {
-            Path basePath = Path.of(path);
-            try {
-                UserPrincipal owner = Files.getOwner(basePath);
-                
-                if (!owner.getName().equals(configuredOwnerFull)) {
-                    throw new AfsException(ErrorCode.ACCESS_DENIED,
-                        String.format("Path %s is owned by '%s' but must be owned by package owner '%s'",
-                            path, owner.getName(), configuredOwnerFull));
-                }
-
-                // Verify full access for the owner
-                checkFullAccessForOwner(path, basePath, currentUser);
-            } catch (IOException e) {
-                throw new AfsException(ErrorCode.ACCESS_DENIED,
-                    String.format("Cannot verify package owner permissions for path %s: %s",
-                        path, e.getMessage()));
+    public SharedFolderValidation validatePath(String path) {
+        if (path == null || path.isBlank()) {
+            throw new AfsException(ErrorCode.VALIDATION_FAILED, "path cannot be empty");
+        }
+        // Basic traversal guard on raw input
+        for (Path seg : Path.of(path)) {
+            if ("..".equals(seg.toString())) {
+                throw new AfsException(ErrorCode.VALIDATION_FAILED, "Path traversal is not allowed");
             }
         }
+
+        final Path normalizedPath;
+        try {
+            normalizedPath = validateAndNormalizePath(path); // must exist or throws
+        } catch (SecurityException e) {
+            throw new AfsException(ErrorCode.ACCESS_DENIED, "Security error accessing path: " + e.getMessage());
+        } catch (IOException e) {
+            throw new AfsException(ErrorCode.INTERNAL_ERROR, "IO error validating: " + e.getMessage());
+        }
+
+        SharedFolderValidation validation = new SharedFolderValidation();
+        validation.setLastCheckedAt(LocalDateTime.now());
+
+        try {
+            validation.setCanRead(Files.isReadable(normalizedPath));
+            validation.setCanWrite(Files.isWritable(normalizedPath));
+            validation.setCanExecute(Files.isExecutable(normalizedPath));
+
+            if (!Files.isDirectory(normalizedPath)) {
+                validation.setValid(false);
+                validation.setErrorMessage("path is not a directory");
+                validation.setPermissionCheckError("Path must be a directory");
+                return validation;
+            }
+
+            if (!validation.getCanRead() || !validation.getCanWrite() || !validation.getCanExecute()) {
+                validation.setValid(false);
+                validation.setErrorMessage("path has insufficient permissions");
+                validation.setPermissionCheckError(
+                        String.format("Required permissions missing - Read: %b, Write: %b, Execute: %b",
+                                validation.getCanRead(), validation.getCanWrite(), validation.getCanExecute()));
+                return validation;
+            }
+
+            try (var listing = Files.list(normalizedPath)) {
+                listing.findFirst(); // touch listing to assert access
+                validation.setValid(true);
+            } catch (SecurityException e) {
+                validation.setValid(false);
+                validation.setErrorMessage("directory listing denied");
+                validation.setPermissionCheckError("Cannot list directory contents: " + e.getMessage());
+            }
+        } catch (SecurityException e) {
+            validation.setValid(false);
+            validation.setErrorMessage("Security error accessing path");
+            validation.setPermissionCheckError(e.getMessage());
+        } catch (IOException e) {
+            validation.setValid(false);
+            validation.setErrorMessage("IO error validating path");
+            validation.setPermissionCheckError(e.getMessage());
+        }
+        return validation;
     }
 
     private static void checkFullAccessForOwner(String path, Path basePath, String currentUser) throws IOException {
@@ -88,19 +134,43 @@ public class SharedFolderValidator {
         }
     }
 
-    public void validateConfiguration() {
-        // Validate package owner first
-        validatePackageOwner();
+    private void validatePackageOwner() {
+        if (!properties.isEnforcePackageOwner()) {
+            log.warn("Package owner validation is disabled - this is not recommended for production!");
+            return;
+        }
 
-        // Validate/create the base path
-        String basePath = properties.getBasePath();
-        if (basePath == null || basePath.isBlank()) {
-            throw new AfsException(ErrorCode.VALIDATION_FAILED, "basePath is not configured");
+        String configuredOwner = properties.getPackageOwner();
+        String configuredOwnerFull = properties.getPackageOwnerFull();
+        String currentUser = System.getProperty("user.name");
+
+        if (configuredOwner != null && !configuredOwner.equals(currentUser)) {
+            throw new AfsException(ErrorCode.ACCESS_DENIED,
+                String.format("Application must run as configured package owner '%s' but is running as '%s'",
+                    configuredOwner, currentUser));
         }
-        if (properties.isCreateMissingDirectories()) {
-            validateRequiredStructure(basePath);
+
+        // Validate the base path is accessible by package owner
+        String path = properties.getBasePath();
+        if (path != null && !path.isBlank()) {
+            Path basePath = Path.of(path);
+            try {
+                UserPrincipal owner = Files.getOwner(basePath);
+
+                if (!owner.getName().equals(configuredOwnerFull)) {
+                    throw new AfsException(ErrorCode.ACCESS_DENIED,
+                        String.format("Path %s is owned by '%s' but must be owned by package owner '%s'",
+                            path, owner.getName(), configuredOwnerFull));
+                }
+
+                // Verify full access for the owner
+                checkFullAccessForOwner(path, basePath, currentUser);
+            } catch (IOException e) {
+                throw new AfsException(ErrorCode.ACCESS_DENIED,
+                    String.format("Cannot verify package owner permissions for path %s: %s",
+                        path, e.getMessage()));
+            }
         }
-        validatePath(basePath);
     }
 
     private void validateRequiredStructure(String basePath) {
@@ -135,123 +205,5 @@ public class SharedFolderValidator {
                     "Failed to create/validate required directory " + path + ": " + e.getMessage());
             }
         }
-    }
-
-    public SharedFolderValidation validatePath(String path) {
-        if (path == null || path.trim().isEmpty()) {
-            throw new AfsException(ErrorCode.VALIDATION_FAILED, "path cannot be empty");
-        }
-
-        Path resolvedPath = Path.of(path);
-        try {
-            // Normalize and get the absolute path
-            Path normalizedPath = validateAndNormalizePath(path);
-
-            // Security checks: reject any ".." segment in the raw input
-            for (Path seg : resolvedPath) {
-                if ("..".equals(seg.toString())) {
-                    throw new AfsException(ErrorCode.VALIDATION_FAILED, "Path traversal is not allowed");
-                }
-            }
-
-            // Existence check
-            if (!Files.exists(normalizedPath)) {
-                throw new AfsException(ErrorCode.NOT_FOUND, "path does not exist: " + normalizedPath);
-            }
-
-            // Directory check
-            if (!Files.isDirectory(normalizedPath)) {
-                throw new AfsException(ErrorCode.VALIDATION_FAILED, "path must be a directory");
-            }
-
-            // Permission checks
-            if (!Files.isReadable(normalizedPath)) {
-                throw new AfsException(ErrorCode.ACCESS_DENIED, "path is not readable");
-            }
-            
-            if (!Files.isWritable(normalizedPath)) {
-                throw new AfsException(ErrorCode.ACCESS_DENIED, "path is not writable");
-            }
-            
-            if (!Files.isExecutable(normalizedPath)) {
-                throw new AfsException(ErrorCode.ACCESS_DENIED, "path is not accessible");
-            }
-
-            // Verify we can list contents
-            try {
-                Files.list(normalizedPath).close();
-            } catch (SecurityException e) {
-                throw new AfsException(ErrorCode.ACCESS_DENIED, "path directory listing denied");
-            }
-        } catch (SecurityException e) {
-            throw new AfsException(ErrorCode.ACCESS_DENIED,
-                "Security error accessing path: " + e.getMessage());
-        } catch (IOException e) {
-            throw new AfsException(ErrorCode.INTERNAL_ERROR,
-                "IO error validating: " + e.getMessage());
-        }
-
-        try {
-            Path normalizedPath = resolvedPath.normalize().toRealPath();
-            if (!Files.exists(normalizedPath)) {
-                throw new AfsException(ErrorCode.NOT_FOUND, "path does not exist: " + normalizedPath);
-            }
-        
-            SharedFolderValidation validation = new SharedFolderValidation();
-            validation.setLastCheckedAt(LocalDateTime.now());
-        
-            try {
-                validation.setCanRead(Files.isReadable(normalizedPath));
-                validation.setCanWrite(Files.isWritable(normalizedPath));
-                validation.setCanExecute(Files.isExecutable(normalizedPath));
-            
-                if (!Files.isDirectory(normalizedPath)) {
-                    validation.setValid(false);
-                    validation.setErrorMessage("path is not a directory");
-                    validation.setPermissionCheckError("Path must be a directory");
-                    return validation;
-                }
-            
-                if (!validation.getCanRead() || !validation.getCanWrite() || !validation.getCanExecute()) {
-                    validation.setValid(false);
-                    validation.setErrorMessage("path has insufficient permissions");
-                    validation.setPermissionCheckError(
-                        String.format("Required permissions missing - Read: %b, Write: %b, Execute: %b",
-                            validation.getCanRead(), validation.getCanWrite(), validation.getCanExecute()));
-                    return validation;
-                }
-            
-                // Verify we can list contents
-                try (var listing = Files.list(normalizedPath)) {
-                    //noinspection ResultOfMethodCallIgnored
-                    listing.findFirst(); // Try to read at least one entry
-                    validation.setValid(true);
-                } catch (SecurityException e) {
-                    validation.setValid(false);
-                    validation.setErrorMessage("directory listing denied");
-                    validation.setPermissionCheckError("Cannot list directory contents: " + e.getMessage());
-                    return validation;
-                }
-            
-            } catch (SecurityException e) {
-                validation.setValid(false);
-                validation.setErrorMessage("Security error accessing path");
-                validation.setPermissionCheckError(e.getMessage());
-            } catch (IOException e) {
-                validation.setValid(false);
-                validation.setErrorMessage("IO error validating path");
-                validation.setPermissionCheckError(e.getMessage());
-            }
-        
-            return validation;
-        } catch (IOException e) {
-            throw new AfsException(ErrorCode.VALIDATION_FAILED, "Error validating path: " + e.getMessage());
-        }
-    }
-
-    public static Path validateAndNormalizePath(String pathStr) throws IOException {
-        Path path = Path.of(pathStr).normalize().toAbsolutePath();
-        // Option: resolve the canonical path (follows symlinks)
-        return path.toRealPath();
     }
 }
