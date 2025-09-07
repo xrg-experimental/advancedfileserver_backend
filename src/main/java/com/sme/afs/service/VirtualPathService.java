@@ -104,7 +104,7 @@ public class VirtualPathService {
                 throw new AfsException(ErrorCode.VALIDATION_FAILED, "Invalid physical path");
             }
         } catch (Exception e) {
-            throw new AfsException(ErrorCode.VALIDATION_FAILED, "Invalid physical path: " + e.getMessage());
+            throw new AfsException(ErrorCode.VALIDATION_FAILED, "Invalid physical path", e);
         }
     }
 
