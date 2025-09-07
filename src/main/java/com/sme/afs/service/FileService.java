@@ -29,7 +29,7 @@ public class FileService {
     private final Path rootLocation;
 
     public FileService(SharedFolderConfig sharedFolderConfig) {
-        this.rootLocation = Path.of(sharedFolderConfig.getBasePath());
+        this.rootLocation = Path.of(sharedFolderConfig.getBasePath()).toAbsolutePath().normalize();
     }
 
     public FileInfoResponse createDirectory(String path) {
