@@ -37,40 +37,41 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-            .csrf(AbstractHttpConfigurer::disable) // Disable CSRF completely for testing
-            .cors(Customizer.withDefaults())
-            .sessionManagement(session
-                    -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .exceptionHandling(exc
-                    -> exc.authenticationEntryPoint(jwtAuthEntryPoint))
-            .headers(headers -> headers
-                .contentTypeOptions(contentTypeOptions -> {})
-                .frameOptions(org.springframework.security.config.annotation.web.configurers.HeadersConfigurer.FrameOptionsConfig::deny)
-                .referrerPolicy(rp -> rp.policy(org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy.SAME_ORIGIN))
-                .httpStrictTransportSecurity(hstsConfig -> hstsConfig
-                        .maxAgeInSeconds(31536000)
-                        .includeSubDomains(true))
-                .contentSecurityPolicy(csp -> csp
-                        .policyDirectives("default-src 'none'; frame-ancestors 'none'; base-uri 'none'"))
-            )
-            .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
-                // Allow all auth endpoints explicitly (works with context-path /api)
-                .requestMatchers("/auth/**").permitAll()
-                // Permit CORS preflight requests
-                .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
-                .requestMatchers("/system/status").permitAll()
-                .requestMatchers("/api/files/**").authenticated()
-                .requestMatchers("/api/admin/**").hasAuthority("ROLE_ADMIN")
-                .requestMatchers("/api/internal/**").hasAuthority("ROLE_INTERNAL")
-                .requestMatchers("/api/external/**").hasAuthority("ROLE_EXTERNAL")
-                .anyRequest().authenticated()
-            )
-            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
-        
+                .csrf(AbstractHttpConfigurer::disable) // Disable CSRF completely for testing
+                .cors(Customizer.withDefaults())
+                .sessionManagement(session
+                        -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .exceptionHandling(exc
+                        -> exc.authenticationEntryPoint(jwtAuthEntryPoint))
+                .headers(headers -> headers
+                        .contentTypeOptions(contentTypeOptions -> {
+                        })
+                        .frameOptions(org.springframework.security.config.annotation.web.configurers.HeadersConfigurer.FrameOptionsConfig::deny)
+                        .referrerPolicy(rp -> rp.policy(org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy.SAME_ORIGIN))
+                        .httpStrictTransportSecurity(hstsConfig -> hstsConfig
+                                .maxAgeInSeconds(31536000)
+                                .includeSubDomains(true))
+                        .contentSecurityPolicy(csp -> csp
+                                .policyDirectives("default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; frame-ancestors 'none'; base-uri 'none'"))
+                )
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                        // Allow all auth endpoints explicitly (works with context-path /api)
+                        .requestMatchers("/auth/**").permitAll()
+                        // Permit CORS preflight requests
+                        .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
+                        .requestMatchers("/system/status").permitAll()
+                        .requestMatchers("/api/files/**").authenticated()
+                        .requestMatchers("/api/admin/**").hasAuthority("ROLE_ADMIN")
+                        .requestMatchers("/api/internal/**").hasAuthority("ROLE_INTERNAL")
+                        .requestMatchers("/api/external/**").hasAuthority("ROLE_EXTERNAL")
+                        .anyRequest().authenticated()
+                )
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+
         http.authenticationProvider(dsmAuthenticationProvider);
         http.authenticationProvider(localAuthenticationProvider);
-        
+
         return http.build();
     }
 
