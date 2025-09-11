@@ -24,7 +24,7 @@ import org.springframework.web.multipart.MultipartFile;
 public class FileController {
     private final FileService fileService;
 
-    @GetMapping("/list")
+    @PostMapping("/list")
     @Operation(summary = "List directory contents")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Successfully retrieved directory listing"),
@@ -35,7 +35,7 @@ public class FileController {
         return ResponseEntity.ok(fileService.listDirectory(request.getPath()));
     }
 
-    @GetMapping("/info")
+    @PostMapping("/info")
     @Operation(summary = "Get file/directory info")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Successfully retrieved file info"),
