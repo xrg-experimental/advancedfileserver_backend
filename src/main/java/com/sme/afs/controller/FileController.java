@@ -2,6 +2,7 @@ package com.sme.afs.controller;
 
 import com.sme.afs.dto.FileListResponse;
 import com.sme.afs.dto.FileInfoResponse;
+import com.sme.afs.dto.RenameRequest;
 import com.sme.afs.service.FileService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -74,9 +75,8 @@ public class FileController {
         @ApiResponse(responseCode = "409", description = "Target name already exists")
     })
     public ResponseEntity<FileInfoResponse> rename(
-            @RequestParam String path,
-            @RequestParam String newName) {
-        return ResponseEntity.ok(fileService.rename(path, newName));
+            @RequestBody RenameRequest request) {
+        return ResponseEntity.ok(fileService.rename(request.getPath(), request.getNewName()));
     }
 
     @PostMapping("/move")
