@@ -3,6 +3,8 @@ package com.sme.afs.controller;
 import com.sme.afs.dto.FileListResponse;
 import com.sme.afs.dto.FileInfoResponse;
 import com.sme.afs.dto.RenameRequest;
+import com.sme.afs.dto.PathRequest;
+import com.sme.afs.dto.MoveRequest;
 import com.sme.afs.service.FileService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -29,8 +31,8 @@ public class FileController {
         @ApiResponse(responseCode = "404", description = "Directory not found")
     })
     public ResponseEntity<FileListResponse> listDirectory(
-            @RequestParam String path) {
-        return ResponseEntity.ok(fileService.listDirectory(path));
+            @RequestBody PathRequest request) {
+        return ResponseEntity.ok(fileService.listDirectory(request.getPath()));
     }
 
     @GetMapping("/info")
@@ -40,8 +42,8 @@ public class FileController {
         @ApiResponse(responseCode = "404", description = "File not found")
     })
     public ResponseEntity<FileInfoResponse> getFileInfo(
-            @RequestParam String path) {
-        return ResponseEntity.ok(fileService.getFileInfo(path));
+            @RequestBody PathRequest request) {
+        return ResponseEntity.ok(fileService.getFileInfo(request.getPath()));
     }
 
     @PostMapping("/create")
@@ -51,8 +53,8 @@ public class FileController {
         @ApiResponse(responseCode = "409", description = "Directory already exists")
     })
     public ResponseEntity<FileInfoResponse> createDirectory(
-            @RequestParam String path) {
-        return ResponseEntity.ok(fileService.createDirectory(path));
+            @RequestBody PathRequest request) {
+        return ResponseEntity.ok(fileService.createDirectory(request.getPath()));
     }
 
     @PostMapping("/delete")
@@ -62,8 +64,8 @@ public class FileController {
         @ApiResponse(responseCode = "404", description = "File not found")
     })
     public ResponseEntity<Void> delete(
-            @RequestParam String path) {
-        fileService.delete(path);
+            @RequestBody PathRequest request) {
+        fileService.delete(request.getPath());
         return ResponseEntity.ok().build();
     }
 
@@ -87,9 +89,8 @@ public class FileController {
         @ApiResponse(responseCode = "409", description = "Target already exists")
     })
     public ResponseEntity<FileInfoResponse> move(
-            @RequestParam String sourcePath,
-            @RequestParam String targetPath) {
-        return ResponseEntity.ok(fileService.move(sourcePath, targetPath));
+            @RequestBody MoveRequest request) {
+        return ResponseEntity.ok(fileService.move(request.getSourcePath(), request.getTargetPath()));
     }
 
     @GetMapping("/download/**")
