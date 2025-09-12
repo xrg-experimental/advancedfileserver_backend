@@ -49,12 +49,15 @@ public class BlobUrl {
     /**
      * Original filename for proper Content-Disposition headers
      */
+    @jakarta.validation.constraints.Size(max = 255)
+    @jakarta.validation.constraints.Pattern(regexp = "^[^\\r\\n\\\\/]+$", message = "filename must not contain path separators or control characters")
     @Column(name = "filename", nullable = false)
     private String filename;
 
     /**
      * MIME type for proper Content-Type headers
      */
+    @jakarta.validation.constraints.Pattern(regexp = "^[\\w.+-]+/[\\w.+-]+$", message = "contentType must be a valid MIME type")
     @Column(name = "content_type", nullable = false, length = 100)
     private String contentType;
 
