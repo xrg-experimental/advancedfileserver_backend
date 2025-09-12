@@ -143,4 +143,4 @@ afs:
 logging:
   level:
     com.sme.afs: DEBUG
-    org.springframework.security: DEBUG
+    org.springframework.security: INFO
