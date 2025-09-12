@@ -28,12 +28,14 @@ public class BlobUrlProperties {
      * Default expiration time for blob URLs.
      * Default: 1 hour
      */
+    @org.hibernate.validator.constraints.time.DurationMin(minutes = 1)
     private Duration defaultExpiration = Duration.ofHours(1);
 
     /**
      * Interval between automatic cleanup runs.
      * Default: 15 minutes
      */
+    @org.hibernate.validator.constraints.time.DurationMin(minutes = 1)
     private Duration cleanupInterval = Duration.ofMinutes(15);
 
     /**
