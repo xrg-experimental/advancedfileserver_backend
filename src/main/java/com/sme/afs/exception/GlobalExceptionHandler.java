@@ -35,7 +35,7 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(SessionException.class)
-    public ResponseEntity<ProblemResponse> handleSessionException(SessionException ex, HttpServletRequest request) {
+    public ResponseEntity<ProblemResponse> handleSessionException(SessionException ex, HttpServletRequest ignore) {
         log.debug("Session exception occurred", ex);
         var problem = createProblem(ErrorCode.SESSION_INVALID, "The session is not valid.");
         return ResponseEntity.status(ErrorCode.SESSION_INVALID.status)
@@ -45,7 +45,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(MaxSessionsExceededException.class)
     public ResponseEntity<ProblemResponse> handleMaxSessionsExceededException(
-            MaxSessionsExceededException ex, HttpServletRequest request) {
+            MaxSessionsExceededException ex, HttpServletRequest ignore) {
         log.warn("Max sessions exceeded", ex);
         var problem = createProblem(ErrorCode.SESSION_MAX_EXCEEDED, "Maximum number of concurrent sessions exceeded.");
         return ResponseEntity.status(ErrorCode.SESSION_MAX_EXCEEDED.status)
@@ -55,7 +55,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(SessionExpiredException.class)
     public ResponseEntity<ProblemResponse> handleSessionExpiredException(
-            SessionExpiredException ex, HttpServletRequest request) {
+            SessionExpiredException ex, HttpServletRequest ignore) {
         log.debug("Session expired", ex);
         var problem = createProblem(ErrorCode.SESSION_EXPIRED, "The session has expired. Please authenticate again.");
         return ResponseEntity.status(ErrorCode.SESSION_EXPIRED.status)
@@ -65,7 +65,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(InvalidSessionException.class)
     public ResponseEntity<ProblemResponse> handleInvalidSessionException(
-            InvalidSessionException ex, HttpServletRequest request) {
+            InvalidSessionException ex, HttpServletRequest ignore) {
         log.debug("Invalid session", ex);
         var problem = createProblem(ErrorCode.SESSION_INVALID, "The session is not valid.");
         return ResponseEntity.status(ErrorCode.SESSION_INVALID.status)
@@ -75,7 +75,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(SessionNotFoundException.class)
     public ResponseEntity<ProblemResponse> handleSessionNotFoundException(
-            SessionNotFoundException ex, HttpServletRequest request) {
+            SessionNotFoundException ex, HttpServletRequest ignore) {
         log.debug("Session not found", ex);
         var problem = createProblem(ErrorCode.SESSION_NOT_FOUND, "The session was not found.");
         return ResponseEntity.status(ErrorCode.SESSION_NOT_FOUND.status)
@@ -85,7 +85,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ProblemResponse> handleValidationExceptions(
-            MethodArgumentNotValidException ex, HttpServletRequest request) {
+            MethodArgumentNotValidException ex, HttpServletRequest ignore) {
         log.debug("Validation failed", ex);
         var problem = createProblem(ErrorCode.VALIDATION_FAILED, "One or more fields failed validation.");
         return ResponseEntity.status(ErrorCode.VALIDATION_FAILED.status)
@@ -94,7 +94,7 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(AfsException.class)
-    public ResponseEntity<ProblemResponse> handleAfsException(AfsException ex, HttpServletRequest request) {
+    public ResponseEntity<ProblemResponse> handleAfsException(AfsException ex, HttpServletRequest ignore) {
         log.error("Application exception occurred", ex);
         ErrorCode code = ex.getErrorCode();
         // Map certain validation failures to a more specific HTTP status
@@ -113,7 +113,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
     public ResponseEntity<ProblemResponse> handleAccessDeniedException(
             org.springframework.security.access.AccessDeniedException ex,
-            HttpServletRequest request) {
+            HttpServletRequest ignore) {
         log.debug("Access denied", ex);
         var problem = createProblem(ErrorCode.ACCESS_DENIED, "Access to the requested resource is denied.");
         return ResponseEntity.status(ErrorCode.ACCESS_DENIED.status)
@@ -122,7 +122,7 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(NoResourceFoundException.class)
-    public ResponseEntity<ProblemResponse> handleNoResourceFoundException(NoResourceFoundException ignore, HttpServletRequest request) {
+    public ResponseEntity<ProblemResponse> handleNoResourceFoundException(NoResourceFoundException ignore1, HttpServletRequest ignore2) {
         log.debug("Resource not found");
         var problem = createProblem(ErrorCode.NOT_FOUND, "The requested resource was not found.");
         return ResponseEntity.status(ErrorCode.NOT_FOUND.status)
@@ -131,7 +131,7 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(NoHandlerFoundException.class)
-    public ResponseEntity<ProblemResponse> handleNoHandlerFoundException(NoHandlerFoundException ignore, HttpServletRequest request) {
+    public ResponseEntity<ProblemResponse> handleNoHandlerFoundException(NoHandlerFoundException ignore1, HttpServletRequest ignore2) {
         log.debug("No handler found");
         var problem = createProblem(ErrorCode.ENDPOINT_NOT_FOUND, "The requested endpoint was not found.");
         return ResponseEntity.status(ErrorCode.ENDPOINT_NOT_FOUND.status)
@@ -140,7 +140,7 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ProblemResponse> handleGenericException(Exception ex, HttpServletRequest request) {
+    public ResponseEntity<ProblemResponse> handleGenericException(Exception ex, HttpServletRequest ignore) {
         log.error("Unexpected error occurred", ex);
         var problem = createProblem(ErrorCode.INTERNAL_ERROR, "An unexpected error occurred.");
         return ResponseEntity.status(ErrorCode.INTERNAL_ERROR.status)
