@@ -41,7 +41,7 @@ public class UserService {
     public UserDTO createUser(CreateUserRequest request) {
         // Check if username already exists
         if (userRepository.findByUsername(request.getUsername()).isPresent()) {
-            throw new AfsException(ErrorCode.VALIDATION_FAILED, "Username already exists");
+            throw new AfsException(ErrorCode.CONFLICT, "Username already exists");
         }
 
         User user = new User();

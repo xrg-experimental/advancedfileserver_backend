@@ -96,8 +96,16 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AfsException.class)
     public ResponseEntity<ProblemResponse> handleAfsException(AfsException ex, HttpServletRequest request) {
         log.error("Application exception occurred", ex);
-        var problem = createProblem(ex.getErrorCode(), "An application error occurred.");
-        return ResponseEntity.status(ex.getErrorCode().status)
+        ErrorCode code = ex.getErrorCode();
+        // Map certain validation failures to a more specific HTTP status
+        if (code == ErrorCode.VALIDATION_FAILED) {
+            String msg = ex.getMessage() != null ? ex.getMessage().toLowerCase() : "";
+            if (msg.contains("already exists") || msg.contains("exists")) {
+                code = ErrorCode.CONFLICT;
+            }
+        }
+        var problem = createProblem(code, ex.getMessage() != null ? ex.getMessage() : "An application error occurred.");
+        return ResponseEntity.status(code.status)
                 .contentType(PROBLEM_JSON)
                 .body(problem);
     }
