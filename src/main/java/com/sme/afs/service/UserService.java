@@ -41,10 +41,11 @@ public class UserService {
     @Transactional
     public UserDTO createUser(CreateUserRequest request) {
         // Check if username already exists
-        String username = request.getUsername().strip();
-        if (!org.springframework.util.StringUtils.hasText(username)) {
+        String rawUsername = request.getUsername();
+        if (!org.springframework.util.StringUtils.hasText(rawUsername)) {
             throw new AfsException(ErrorCode.VALIDATION_FAILED, "Username must not be blank");
         }
+        String username = rawUsername.strip();
         if (userRepository.existsByUsername(username)) {
             throw new AfsException(ErrorCode.CONFLICT, "Username already exists");
         }
