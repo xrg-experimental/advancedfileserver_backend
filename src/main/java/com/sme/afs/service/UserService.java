@@ -9,6 +9,7 @@ import com.sme.afs.model.User;
 import com.sme.afs.repository.GroupRepository;
 import com.sme.afs.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -40,12 +41,16 @@ public class UserService {
     @Transactional
     public UserDTO createUser(CreateUserRequest request) {
         // Check if username already exists
-        if (userRepository.existsByUsername(request.getUsername())) {
+        String username = request.getUsername().strip();
+        if (!org.springframework.util.StringUtils.hasText(username)) {
+            throw new AfsException(ErrorCode.VALIDATION_FAILED, "Username must not be blank");
+        }
+        if (userRepository.existsByUsername(username)) {
             throw new AfsException(ErrorCode.CONFLICT, "Username already exists");
         }
 
         User user = new User();
-        user.setUsername(request.getUsername());
+        user.setUsername(username);
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setEmail(request.getEmail());
         user.setUserType(request.getUserType());
@@ -66,7 +71,13 @@ public class UserService {
             user.setGroups(groups);
         }
 
-        User savedUser = userRepository.save(user);
+        User savedUser;
+        try {
+            user.setUsername(username); // use the sanitized value
+            savedUser = userRepository.save(user);
+        } catch (DataIntegrityViolationException e) {
+            throw new AfsException(ErrorCode.CONFLICT, "Username already exists");
+        }
         return UserDTO.fromUser(savedUser);
     }
 
