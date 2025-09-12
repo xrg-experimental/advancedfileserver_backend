@@ -74,7 +74,6 @@ public class UserService {
 
         User savedUser;
         try {
-            user.setUsername(username); // use the sanitized value
             savedUser = userRepository.save(user);
         } catch (DataIntegrityViolationException e) {
             if (isUniqueUsernameViolation(e)) {
