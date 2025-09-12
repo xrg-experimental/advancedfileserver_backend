@@ -14,7 +14,9 @@ import java.time.LocalDateTime;
  */
 @Entity
 @Table(name = "blob_urls")
-@Data
+@lombok.Getter
+@lombok.Setter
+@lombok.ToString(exclude = {"token", "originalPath", "hardLinkPath", "contentType"})
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
