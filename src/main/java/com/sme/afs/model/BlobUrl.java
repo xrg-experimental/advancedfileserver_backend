@@ -1,7 +1,6 @@
 package com.sme.afs.model;
 
 import jakarta.persistence.*;
-import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -50,7 +49,7 @@ public class BlobUrl {
     /**
      * Original filename for proper Content-Disposition headers
      */
-    @Column(name = "filename", nullable = false, length = 255)
+    @Column(name = "filename", nullable = false)
     private String filename;
 
     /**
