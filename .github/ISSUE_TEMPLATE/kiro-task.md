@@ -23,9 +23,9 @@ assignees: ''
 <!-- This will be automatically filled: Part of epic #[EPIC_NUMBER] -->
 
 ## Kiro Planning References
-- [Requirements](.kiro/specs/blob-url-files/requirements.md)
-- [Design](.kiro/specs/blob-url-files/design.md)
-- [Tasks](.kiro/specs/blob-url-files/tasks.md)
+- [Requirements](/.kiro/specs/blob-url-files/requirements.md)
+- [Design](/.kiro/specs/blob-url-files/design.md)
+- [Tasks](/.kiro/specs/blob-url-files/tasks.md)
 
 ## Additional Context
 <!-- Any additional context or notes specific to this task -->

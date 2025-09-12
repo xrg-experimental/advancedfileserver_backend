@@ -8,9 +8,9 @@ Brief description of the changes implemented in this PR.
 - Related to Epic #[EPIC_NUMBER]
 
 ### Kiro Planning References
-- [Requirements](.kiro/specs/blob-url-files/requirements.md)
-- [Design](.kiro/specs/blob-url-files/design.md)
-- [Tasks](.kiro/specs/blob-url-files/tasks.md)
+- [Requirements](/.kiro/specs/blob-url-files/requirements.md)
+- [Design](/.kiro/specs/blob-url-files/design.md)
+- [Tasks](/.kiro/specs/blob-url-files/tasks.md)
 
 ### Changes Made
 - [ ] Component implementation
