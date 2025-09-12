@@ -55,13 +55,17 @@ public class HardLinkManager {
                             source + ", Target: " + target);
         }
 
-        // Remove target if it already exists – only regular files (no dirs), do not follow links
-        if (Files.exists(target)) {
-            if (Files.isDirectory(target)) {
+        // Guard: target must not be the same file as the source
+        if (Files.exists(target, LinkOption.NOFOLLOW_LINKS)) {
+            if (Files.isSameFile(sourceReal, target)) {
+                throw new IllegalArgumentException("Source and target must differ: " + target);
+            }
+            if (Files.isDirectory(target, LinkOption.NOFOLLOW_LINKS)) {
                 throw new IOException("Refusing to overwrite a directory: " + target);
             }
-            Files.delete(target);
-            log.debug("Removed existing target file: {}", target);
+            if (Files.isSymbolicLink(target)) {
+                throw new IOException("Refusing to overwrite a symbolic link: " + target);
+            }
         }
 
         try {
