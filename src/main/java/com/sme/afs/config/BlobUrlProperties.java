@@ -21,6 +21,7 @@ public class BlobUrlProperties {
      * Must be on the same filesystem as the files being linked.
      * Default: System temp directory + "afs-downloads"
      */
+    @jakarta.validation.constraints.NotBlank
     private String tempDirectory = System.getProperty("java.io.tmpdir") + "/afs-downloads";
 
     /**
@@ -46,6 +47,7 @@ public class BlobUrlProperties {
      * Helps prevent filesystem exhaustion.
      * Default: 1000
      */
+    @jakarta.validation.constraints.Positive
     private long maxConcurrentUrls = 1000;
 
     /**
@@ -65,6 +67,7 @@ public class BlobUrlProperties {
      * Base URL path for blob URL downloads.
      * Default: "/downloads"
      */
+    @jakarta.validation.constraints.Pattern(regexp = "^/[a-zA-Z0-9/_-]*$", message = "downloadUrlPath must start with '/' and contain only URL-safe characters")
     private String downloadUrlPath = "/downloads";
 
     /**
@@ -72,5 +75,7 @@ public class BlobUrlProperties {
      * Longer tokens provide better security but use more storage.
      * Default: 32 (results in ~43 character base64 token)
      */
+    @jakarta.validation.constraints.Min(16)
+    @jakarta.validation.constraints.Max(64)
     private int tokenLength = 32;
 }
