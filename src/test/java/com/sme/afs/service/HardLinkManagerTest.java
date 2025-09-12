@@ -3,8 +3,6 @@ package com.sme.afs.service;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -16,8 +14,6 @@ import static org.junit.jupiter.api.Assertions.*;
  * Unit tests for HardLinkManager service.
  * Tests hard link creation, deletion, and validation operations.
  */
-@SpringBootTest
-@ActiveProfiles("test")
 class HardLinkManagerTest {
 
     @TempDir
