@@ -50,7 +50,7 @@ public class HardLinkManager {
         }
 
         // Validate that both paths are on the same filesystem
-        if (!isOnSameFilesystem(source, target)) {
+        if (!isOnSameFilesystem(source.toAbsolutePath().normalize(), target.toAbsolutePath().normalize())) {
             throw new IllegalArgumentException(
                     "Cannot create hard link across different filesystems. Source: " +
                             source + ", Target: " + target);
