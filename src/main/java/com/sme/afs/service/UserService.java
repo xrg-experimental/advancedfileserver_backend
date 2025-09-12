@@ -40,7 +40,7 @@ public class UserService {
     @Transactional
     public UserDTO createUser(CreateUserRequest request) {
         // Check if username already exists
-        if (userRepository.findByUsername(request.getUsername()).isPresent()) {
+        if (userRepository.existsByUsername(request.getUsername())) {
             throw new AfsException(ErrorCode.CONFLICT, "Username already exists");
         }
 
