@@ -101,6 +101,9 @@ public class HardLinkManager {
             if (Files.isDirectory(hardLinkPath, LinkOption.NOFOLLOW_LINKS)) {
                 throw new IOException("Refusing to delete directory: " + hardLinkPath);
             }
+            if (Files.isSymbolicLink(hardLinkPath)) {
+                throw new IOException("Refusing to delete symbolic link: " + hardLinkPath);
+            }
             Files.delete(hardLinkPath);
             log.info("Successfully deleted hard link: {}", hardLinkPath);
         } catch (IOException e) {
