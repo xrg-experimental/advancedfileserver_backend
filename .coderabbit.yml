@@ -1,30 +1,237 @@
-# CodeRabbit configuration
-language: en-US  # Review language
+# CodeRabbit Configuration for Advanced File Server Backend
+# This configuration is optimized for backend development with security and code quality focus
+
+language: en-US
+tone_instructions: "Be thorough and security-focused, especially for file handling operations"
+early_access: false
+enable_free_tier: true
+
 reviews:
-    profile: chill  # or "assertive" for more detailed feedback
-    high_level_summary: true
-    poem: false
-    review_status: false
-    auto_review:
-        enabled: true
-        drafts: false  # Don't review draft MRs
-    path_filters:
-        - "src/**"           # Include source code
-        - "user-docs/**"     # Include documentation for the users
-        - ".git*"            # Include .gitattributes and .gitignore
-        - "pom.xml"          # Include Maven configuration
-        - "README.m"         # Include main README
-        - "!docs/old/**"     # Exclude old plans and prompts
-        - "!docs/prompts/**" # Exclude prompts
-        - "!logs/**"         # Exclude log files
-        - "!target/**"       # Exclude build directories
-# also catch leading-dot CI files at repo root
-        - ".gitlab-ci.yml"
-    path_instructions:
-        - path: "**/*.java"
-          instructions: "Focus on understandable code and security best practices"
-    tools:
-        yamllint:
-            enabled: false
-        markdownlint:
-            enabled: false
+  profile: assertive  # More thorough feedback for backend systems
+  request_changes_workflow: true  # Require resolution before merge for better quality
+  high_level_summary: true
+  high_level_summary_placeholder: "@coderabbitai summary"
+  auto_title_placeholder: "@coderabbitai"
+  review_status: true
+  commit_status: true
+  fail_commit_status: true  # Fail status on review issues
+  collapse_walkthrough: false
+  changed_files_summary: true
+  sequence_diagrams: true
+  estimate_code_review_effort: true
+  assess_linked_issues: true
+  related_issues: true
+  related_prs: true
+  suggested_labels: true
+  auto_apply_labels: false
+  suggested_reviewers: true
+  poem: false  # Keep it professional
+
+  # Path filters - focus on source code and configuration
+  path_filters:
+    - "src/**"
+    - "**/*.java"
+    - "**/*.py"
+    - "**/*.js"
+    - "**/*.ts"
+    - "**/*.go"
+    - "**/*.rs"
+    - "**/*.yml"
+    - "**/*.yaml"
+    - "**/*.json"
+    - "**/*.xml"
+    - "**/*.properties"
+    - "**/*.conf"
+    - "**/*.config"
+    - "Dockerfile*"
+    - "docker-compose*.yml"
+    - "pom.xml"
+    - "package.json"
+    - "requirements.txt"
+    - "Cargo.toml"
+    - "go.mod"
+    - "README.md"
+    - "CHANGELOG.md"
+    - ".github/**"
+    - "!target/**"
+    - "!build/**"
+    - "!dist/**"
+    - "!node_modules/**"
+    - "!.git/**"
+    - "!logs/**"
+    - "!*.log"
+    - "!docs/old/**"
+
+  # Path-specific instructions for different file types
+  path_instructions:
+    - path: "**/*.java"
+      instructions: |
+        Focus on:
+        - Security best practices, especially for file operations and user input validation
+        - Proper exception handling and resource management
+        - Thread safety for concurrent file operations
+        - Memory efficiency for large file handling
+        - Proper use of Java NIO for file operations
+        - Authentication and authorization checks
+        - Input sanitization to prevent directory traversal attacks
+
+    - path: "**/*.py"
+      instructions: |
+        Focus on:
+        - Security vulnerabilities in file handling
+        - Proper error handling and logging
+        - Type hints and documentation
+        - Async/await patterns for I/O operations
+        - Resource cleanup and context managers
+        - Input validation and sanitization
+
+    - path: "**/Dockerfile*"
+      instructions: |
+        Focus on:
+        - Security best practices (non-root user, minimal base images)
+        - Multi-stage builds for smaller images
+        - Proper layer caching
+        - Avoiding secrets in layers
+        - Health checks and proper signal handling
+
+    - path: "**/*.yml"
+      instructions: |
+        Focus on:
+        - Configuration security (no hardcoded secrets)
+        - Proper indentation and structure
+        - Environment-specific configurations
+        - Resource limits and constraints
+
+    - path: "**/docker-compose*.yml"
+      instructions: |
+        Focus on:
+        - Security configurations
+        - Network isolation
+        - Volume mounts and permissions
+        - Environment variable handling
+        - Service dependencies and health checks
+
+  # Labeling instructions for better PR categorization
+  labeling_instructions:
+    - label: "security"
+      instructions: "Apply when changes affect authentication, authorization, file access controls, or input validation"
+    - label: "performance"
+      instructions: "Apply when changes affect file I/O performance, caching, or resource usage"
+    - label: "api"
+      instructions: "Apply when changes affect REST API endpoints or blob URL generation"
+    - label: "storage"
+      instructions: "Apply when changes affect file storage, retrieval, or management"
+    - label: "docker"
+      instructions: "Apply when changes affect containerization or deployment"
+    - label: "configuration"
+      instructions: "Apply when changes affect configuration files or environment setup"
+    - label: "documentation"
+      instructions: "Apply when changes primarily affect documentation or README files"
+
+  auto_review:
+    enabled: true
+    auto_incremental_review: true
+    drafts: true  # Review drafts for early feedback
+    ignore_title_keywords:
+      - "wip"
+      - "work in progress"
+      - "do not merge"
+
+  # Pre-merge checks for code quality
+  pre_merge_checks:
+    docstrings:
+      mode: warning
+      threshold: 75
+
+    title:
+      mode: warning
+      requirements: "Title should be descriptive and follow conventional commit format when applicable"
+
+    description:
+      mode: warning
+
+    issue_assessment:
+      mode: warning
+
+    custom_checks:
+      - name: "Security Review"
+        mode: error
+        instructions: |
+          Verify that:
+          - File upload endpoints have proper validation and size limits
+          - File access is properly authenticated and authorized
+          - No directory traversal vulnerabilities exist
+          - Temporary files are properly cleaned up
+          - Sensitive information is not logged
+
+      - name: "API Design"
+        mode: warning
+        instructions: |
+          Verify that:
+          - API endpoints follow RESTful conventions
+          - Proper HTTP status codes are returned
+          - Error responses include helpful messages
+          - API documentation is updated for new endpoints
+
+  # Tool configurations optimized for backend development
+  tools:
+    # Security scanning
+    gitleaks:
+      enabled: true
+    semgrep:
+      enabled: true
+    checkov:
+      enabled: true
+
+    # Language-specific tools
+    eslint:
+      enabled: false
+    biome:
+      enabled: false
+    ruff:
+      enabled: false
+    pylint:
+      enabled: false
+    golangci-lint:
+      enabled: false
+
+    # Infrastructure
+    hadolint:
+      enabled: false
+    yamllint:
+      enabled: false
+
+    # General code quality
+    shellcheck:
+      enabled: false
+    markdownlint:
+      enabled: false
+    actionlint:
+      enabled: false
+
+chat:
+  art: false  # Keep chat professional
+  auto_reply: true
+  integrations:
+    jira:
+      usage: false
+    linear:
+      usage: false
+
+knowledge_base:
+  opt_out: false
+  web_search:
+    enabled: true
+  code_guidelines:
+    enabled: true
+    filePatterns:
+      - "CODING_STANDARDS.md"
+      - "SECURITY_GUIDELINES.md"
+      - ".github/CONTRIBUTING.md"
+      - "docs/development/**"
+  learnings:
+    scope: auto
+  issues:
+    scope: auto
+  pull_requests:
+    scope: auto
