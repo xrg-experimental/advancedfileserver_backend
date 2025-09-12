@@ -9,7 +9,10 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 
@@ -29,48 +32,50 @@ class BlobUrlRepositoryTest {
     @Autowired
     private BlobUrlRepository blobUrlRepository;
 
-    private BlobUrl activeBlobUrl;
-    private BlobUrl expiredBlobUrl;
-    private BlobUrl anotherActiveBlobUrl;
+    private LocalDateTime fixedNow;
 
     @BeforeEach
     void setUp() {
-        LocalDateTime now = LocalDateTime.now();
+        // Use a fixed clock to avoid flakiness in time-based assertions
+        // Fixed clock for deterministic time in tests
+        Clock fixedClock = Clock.fixed(Instant.parse("2025-01-01T00:00:00Z"), ZoneId.systemDefault());
+        fixedNow = LocalDateTime.ofInstant(fixedClock.instant(), ZoneId.systemDefault());
 
-        // Create test data
-        activeBlobUrl = BlobUrl.builder()
+        // Create test data using fixedNow
+        BlobUrl activeBlobUrl = BlobUrl.builder()
                 .token("active-token-123")
                 .originalPath("/path/to/original/file.txt")
                 .hardLinkPath("/tmp/afs-downloads/active-link.txt")
                 .filename("file.txt")
                 .contentType("text/plain")
                 .fileSize(1024L)
-                .createdAt(now.minusMinutes(30))
-                .expiresAt(now.plusMinutes(30))
+                .createdAt(fixedNow.minusMinutes(30))
+                .expiresAt(fixedNow.plusMinutes(30))
                 .createdBy("testuser")
                 .build();
 
-        expiredBlobUrl = BlobUrl.builder()
+        BlobUrl expiredBlobUrl = BlobUrl.builder()
                 .token("expired-token-456")
                 .originalPath("/path/to/expired/file.txt")
                 .hardLinkPath("/tmp/afs-downloads/expired-link.txt")
                 .filename("expired.txt")
                 .contentType("text/plain")
                 .fileSize(2048L)
-                .createdAt(now.minusHours(2))
-                .expiresAt(now.minusMinutes(30))
+                .createdAt(fixedNow.minusHours(2))
+                .expiresAt(fixedNow.minusMinutes(30))
                 .createdBy("testuser")
                 .build();
 
-        anotherActiveBlobUrl = BlobUrl.builder()
+        // Changed to 2 hours to be outside the 1-hour window
+        BlobUrl anotherActiveBlobUrl = BlobUrl.builder()
                 .token("another-active-789")
                 .originalPath("/path/to/another/file.txt")
                 .hardLinkPath("/tmp/afs-downloads/another-link.txt")
                 .filename("another.txt")
                 .contentType("application/pdf")
                 .fileSize(4096L)
-                .createdAt(now.minusMinutes(15))
-                .expiresAt(now.plusHours(2)) // Changed to 2 hours to be outside the 1-hour window
+                .createdAt(fixedNow.minusMinutes(15))
+                .expiresAt(fixedNow.plusHours(2)) // Changed to 2 hours to be outside the 1-hour window
                 .createdBy("anotheruser")
                 .build();
 
@@ -83,16 +88,41 @@ class BlobUrlRepositoryTest {
 
     @Test
     void testBlobUrlIsExpiredMethod() {
+        // Use real current time to verify isExpired() which relies on system clock
+        LocalDateTime realNow = LocalDateTime.now();
+        BlobUrl active = BlobUrl.builder()
+                .token("tmp-active")
+                .originalPath("/tmp/original")
+                .hardLinkPath("/tmp/hard")
+                .filename("tmp.txt")
+                .contentType("text/plain")
+                .fileSize(1L)
+                .createdAt(realNow.minusMinutes(1))
+                .expiresAt(realNow.plusMinutes(5))
+                .createdBy("tester")
+                .build();
+
+        BlobUrl expired = BlobUrl.builder()
+                .token("tmp-expired")
+                .originalPath("/tmp/original2")
+                .hardLinkPath("/tmp/hard2")
+                .filename("tmp2.txt")
+                .contentType("text/plain")
+                .fileSize(1L)
+                .createdAt(realNow.minusHours(1))
+                .expiresAt(realNow.minusMinutes(5))
+                .createdBy("tester")
+                .build();
+
         // Act & Assert
-        assertFalse(activeBlobUrl.isExpired());
-        assertTrue(expiredBlobUrl.isExpired());
-        assertFalse(anotherActiveBlobUrl.isExpired());
+        assertFalse(active.isExpired());
+        assertTrue(expired.isExpired());
     }
 
     @Test
     void testCountActiveUrls() {
         // Arrange
-        LocalDateTime currentTime = LocalDateTime.now();
+        LocalDateTime currentTime = fixedNow;
 
         // Act
         long activeCount = blobUrlRepository.countActiveUrls(currentTime);
@@ -104,7 +134,7 @@ class BlobUrlRepositoryTest {
     @Test
     void testCountActiveUrlsByUser() {
         // Arrange
-        LocalDateTime currentTime = LocalDateTime.now();
+        LocalDateTime currentTime = fixedNow;
 
         // Act
         long testUserCount = blobUrlRepository.countActiveUrlsByUser("testuser", currentTime);
@@ -121,7 +151,7 @@ class BlobUrlRepositoryTest {
     @Transactional
     void testDeleteExpiredUrls() {
         // Arrange
-        LocalDateTime currentTime = LocalDateTime.now();
+        LocalDateTime currentTime = fixedNow;
         long initialCount = blobUrlRepository.count();
 
         // Act
@@ -155,7 +185,7 @@ class BlobUrlRepositoryTest {
     @Test
     void testFindActiveByToken() {
         // Arrange
-        LocalDateTime currentTime = LocalDateTime.now();
+        LocalDateTime currentTime = fixedNow;
 
         // Act
         Optional<BlobUrl> activeUrl = blobUrlRepository.findActiveByToken("active-token-123", currentTime);
@@ -173,7 +203,7 @@ class BlobUrlRepositoryTest {
     @Test
     void testFindActiveUrlsByOriginalPath() {
         // Arrange
-        LocalDateTime currentTime = LocalDateTime.now();
+        LocalDateTime currentTime = fixedNow;
 
         // Act
         List<BlobUrl> urlsForOriginalFile = blobUrlRepository.findActiveUrlsByOriginalPath(
@@ -191,7 +221,7 @@ class BlobUrlRepositoryTest {
     @Test
     void testFindActiveUrlsByUser() {
         // Arrange
-        LocalDateTime currentTime = LocalDateTime.now();
+        LocalDateTime currentTime = fixedNow;
 
         // Act
         List<BlobUrl> activeTestUserUrls = blobUrlRepository.findActiveUrlsByUser("testuser", currentTime);
@@ -222,7 +252,7 @@ class BlobUrlRepositoryTest {
     @Test
     void testFindExpiredUrls() {
         // Arrange
-        LocalDateTime currentTime = LocalDateTime.now();
+        LocalDateTime currentTime = fixedNow;
 
         // Act
         List<BlobUrl> expiredUrls = blobUrlRepository.findExpiredUrls(currentTime);
@@ -236,7 +266,7 @@ class BlobUrlRepositoryTest {
     @Test
     void testFindUrlsExpiringWithin() {
         // Arrange
-        LocalDateTime currentTime = LocalDateTime.now();
+        LocalDateTime currentTime = fixedNow;
         LocalDateTime oneHourFromNow = currentTime.plusHours(1);
 
         // Act
@@ -260,7 +290,7 @@ class BlobUrlRepositoryTest {
                 .filename("test.txt")
                 .contentType("text/plain")
                 .fileSize(100L)
-                .expiresAt(LocalDateTime.now().plusHours(1))
+                .expiresAt(fixedNow.plusHours(1))
                 .createdBy("testuser")
                 // Note: not setting createdAt to test @PrePersist
                 .build();
@@ -284,8 +314,8 @@ class BlobUrlRepositoryTest {
                 .filename("new.txt")
                 .contentType("text/plain")
                 .fileSize(512L)
-                .createdAt(LocalDateTime.now())
-                .expiresAt(LocalDateTime.now().plusHours(1))
+                .createdAt(fixedNow)
+                .expiresAt(fixedNow.plusHours(1))
                 .createdBy("newuser")
                 .build();
 
