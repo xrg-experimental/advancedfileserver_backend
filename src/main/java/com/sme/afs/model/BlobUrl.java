@@ -13,7 +13,13 @@ import java.time.LocalDateTime;
  * Uses hard links to provide secure, temporary access to files without copying.
  */
 @Entity
-@Table(name = "blob_urls")
+@Table(
+        name = "blob_urls",
+        indexes = {
+                @Index(name = "idx_blob_urls_expires_at", columnList = "expires_at"),
+                @Index(name = "idx_blob_urls_created_by", columnList = "created_by")
+        }
+)
 @lombok.Getter
 @lombok.Setter
 @lombok.ToString(exclude = {"token", "originalPath", "hardLinkPath", "contentType"})
