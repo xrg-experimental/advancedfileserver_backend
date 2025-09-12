@@ -13,6 +13,7 @@ import java.time.Duration;
 @Component
 @ConfigurationProperties(prefix = "afs.blob-urls")
 @Data
+@org.springframework.validation.annotation.Validated
 public class BlobUrlProperties {
 
     /**
