@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import java.io.IOException;
 import java.nio.file.FileStore;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
 
@@ -30,14 +31,15 @@ public class HardLinkManager {
     public void createHardLink(Path source, Path target) throws IOException {
         log.debug("Creating hard link from {} to {}", source, target);
 
-        // Validate that the source file exists
-        if (!Files.exists(source)) {
-            throw new IOException("Source file does not exist: " + source);
+        // Resolve real path without following symlinks and validate
+        Path sourceReal;
+        try {
+            sourceReal = source.toRealPath(LinkOption.NOFOLLOW_LINKS);
+        } catch (IOException e) {
+            throw new IOException("Source file does not exist or is not accessible: " + source, e);
         }
-
-        // Validate that source is a regular file
-        if (!Files.isRegularFile(source)) {
-            throw new IOException("Source is not a regular file: " + source);
+        if (!Files.isRegularFile(sourceReal, LinkOption.NOFOLLOW_LINKS)) {
+            throw new IOException("Source is not a regular file (or is a symlink): " + sourceReal);
         }
 
         // Ensure target directory exists
