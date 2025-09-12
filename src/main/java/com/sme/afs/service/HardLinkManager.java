@@ -18,7 +18,7 @@ import java.nio.file.attribute.BasicFileAttributes;
 public class HardLinkManager {
 
     /**
-     * Creates a hard link from source to target path.
+     * Creates a hard link from the source to the target path.
      * Both paths must be on the same filesystem for hard links to work.
      *
      * @param source Path to the existing file
@@ -30,7 +30,7 @@ public class HardLinkManager {
     public void createHardLink(Path source, Path target) throws IOException {
         log.debug("Creating hard link from {} to {}", source, target);
 
-        // Validate that source file exists
+        // Validate that the source file exists
         if (!Files.exists(source)) {
             throw new IOException("Source file does not exist: " + source);
         }

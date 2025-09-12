@@ -58,7 +58,7 @@ class HardLinkManagerTest {
         Files.write(sourceFile, testContent.getBytes());
         hardLinkManager.createHardLink(sourceFile, targetFile);
 
-        // Act - Delete source file
+        // Act - Delete the source file
         Files.delete(sourceFile);
 
         // Assert - Target should still exist and be accessible
@@ -78,7 +78,7 @@ class HardLinkManagerTest {
         Files.write(sourceFile, initialContent.getBytes());
         hardLinkManager.createHardLink(sourceFile, targetFile);
 
-        // Act - Modify content through source file
+        // Act - Modify content through the source file
         Files.write(sourceFile, modifiedContent.getBytes());
 
         // Assert - Both files should reflect the change (they're hard linked)

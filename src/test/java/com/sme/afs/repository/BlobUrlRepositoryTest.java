@@ -149,9 +149,7 @@ class BlobUrlRepositoryTest {
         invalidBlobUrl.setToken("test-constraints");
 
         // This should fail due to null constraints
-        assertThrows(Exception.class, () -> {
-            blobUrlRepository.saveAndFlush(invalidBlobUrl);
-        });
+        assertThrows(Exception.class, () -> blobUrlRepository.saveAndFlush(invalidBlobUrl));
     }
 
     @Test
