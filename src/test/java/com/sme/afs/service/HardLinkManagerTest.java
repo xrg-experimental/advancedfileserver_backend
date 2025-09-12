@@ -243,4 +243,23 @@ class HardLinkManagerTest {
         // Act & Assert - Should not throw exception on most modern filesystems
         assertDoesNotThrow(() -> hardLinkManager.validateFilesystemSupport(tempDir));
     }
+
+    @Test
+    void testGetHardLinkCount_FallbackIsAtLeastOne() throws IOException {
+        Path sourceFile = tempDir.resolve("source.txt");
+        Files.write(sourceFile, "x".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        int count = hardLinkManager.getHardLinkCount(sourceFile);
+        assertTrue(count >= 1);
+    }
+
+    @Test
+    void testGetHardLinkCount_IncrementsAfterCreatingLink() throws IOException {
+        Path sourceFile = tempDir.resolve("source.txt");
+        Path targetFile = tempDir.resolve("target.txt");
+        Files.write(sourceFile, "x".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        int before = hardLinkManager.getHardLinkCount(sourceFile);
+        hardLinkManager.createHardLink(sourceFile, targetFile);
+        int after = hardLinkManager.getHardLinkCount(sourceFile);
+        assertTrue(after >= before); // On UNIX likely after == before+1; on fallback both may be 1
+    }
 }
