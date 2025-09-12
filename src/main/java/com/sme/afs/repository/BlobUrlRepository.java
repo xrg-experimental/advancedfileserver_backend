@@ -44,7 +44,7 @@ public interface BlobUrlRepository extends JpaRepository<BlobUrl, String> {
      * @param currentTime Current timestamp to compare against
      * @return Number of deleted records
      */
-    @Modifying
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("DELETE FROM BlobUrl b WHERE b.expiresAt <= :currentTime")
     int deleteExpiredUrls(@Param("currentTime") LocalDateTime currentTime);
 
