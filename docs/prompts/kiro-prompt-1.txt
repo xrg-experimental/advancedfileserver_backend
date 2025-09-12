@@ -1,0 +1,3 @@
+Please try to reduce the number of tasks. I want to "see" something
+at the end of each task to really understand what is going on. At least
+a unit or integration test should be done for each task.
