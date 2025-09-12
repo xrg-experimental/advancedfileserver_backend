@@ -7,6 +7,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -37,7 +38,7 @@ class HardLinkManagerTest {
         Path targetFile = targetDir.resolve("target.txt");
         String testContent = "Test content";
 
-        Files.write(sourceFile, testContent.getBytes());
+        Files.write(sourceFile, testContent.getBytes(StandardCharsets.UTF_8));
 
         // Act
         hardLinkManager.createHardLink(sourceFile, targetFile);
@@ -55,7 +56,7 @@ class HardLinkManagerTest {
         Path targetFile = tempDir.resolve("target.txt");
         String testContent = "Test content";
 
-        Files.write(sourceFile, testContent.getBytes());
+        Files.write(sourceFile, testContent.getBytes(StandardCharsets.UTF_8));
         hardLinkManager.createHardLink(sourceFile, targetFile);
 
         // Act - Delete the source file
@@ -75,11 +76,11 @@ class HardLinkManagerTest {
         String initialContent = "Initial content";
         String modifiedContent = "Modified content";
 
-        Files.write(sourceFile, initialContent.getBytes());
+        Files.write(sourceFile, initialContent.getBytes(StandardCharsets.UTF_8));
         hardLinkManager.createHardLink(sourceFile, targetFile);
 
         // Act - Modify content through the source file
-        Files.write(sourceFile, modifiedContent.getBytes());
+        Files.write(sourceFile, modifiedContent.getBytes(StandardCharsets.UTF_8));
 
         // Assert - Both files should reflect the change (they're hard linked)
         assertEquals(modifiedContent, Files.readString(sourceFile));
@@ -94,8 +95,8 @@ class HardLinkManagerTest {
         String sourceContent = "Source content";
         String oldTargetContent = "Old target content";
 
-        Files.write(sourceFile, sourceContent.getBytes());
-        Files.write(targetFile, oldTargetContent.getBytes());
+        Files.write(sourceFile, sourceContent.getBytes(StandardCharsets.UTF_8));
+        Files.write(targetFile, oldTargetContent.getBytes(StandardCharsets.UTF_8));
 
         // Act
         hardLinkManager.createHardLink(sourceFile, targetFile);
@@ -139,7 +140,7 @@ class HardLinkManagerTest {
         Path targetFile = tempDir.resolve("target.txt");
         String testContent = "Test content for hard link";
 
-        Files.write(sourceFile, testContent.getBytes());
+        Files.write(sourceFile, testContent.getBytes(StandardCharsets.UTF_8));
 
         // Act
         hardLinkManager.createHardLink(sourceFile, targetFile);
@@ -161,7 +162,7 @@ class HardLinkManagerTest {
         Path targetFile = tempDir.resolve("target-with-dashes_and_underscores.txt");
         String testContent = "Content with special filename";
 
-        Files.write(sourceFile, testContent.getBytes());
+        Files.write(sourceFile, testContent.getBytes(StandardCharsets.UTF_8));
 
         // Act
         hardLinkManager.createHardLink(sourceFile, targetFile);
@@ -187,7 +188,7 @@ class HardLinkManagerTest {
         Path targetFile = tempDir.resolve("target.txt");
         String testContent = "Test content";
 
-        Files.write(sourceFile, testContent.getBytes());
+        Files.write(sourceFile, testContent.getBytes(StandardCharsets.UTF_8));
         hardLinkManager.createHardLink(sourceFile, targetFile);
 
         // Verify hard link exists
@@ -208,8 +209,8 @@ class HardLinkManagerTest {
         Path file1 = tempDir.resolve("file1.txt");
         Path file2 = tempDir.resolve("file2.txt");
 
-        Files.write(file1, "content1".getBytes());
-        Files.write(file2, "content2".getBytes());
+        Files.write(file1, "content1".getBytes(StandardCharsets.UTF_8));
+        Files.write(file2, "content2".getBytes(StandardCharsets.UTF_8));
 
         // Act
         boolean result = hardLinkManager.isOnSameFilesystem(file1, file2);
@@ -227,8 +228,8 @@ class HardLinkManagerTest {
         Path file1 = tempDir.resolve("file1.txt");
         Path file2 = subDir.resolve("file2.txt");
 
-        Files.write(file1, "content1".getBytes());
-        Files.write(file2, "content2".getBytes());
+        Files.write(file1, "content1".getBytes(StandardCharsets.UTF_8));
+        Files.write(file2, "content2".getBytes(StandardCharsets.UTF_8));
 
         // Act
         boolean result = hardLinkManager.isOnSameFilesystem(file1, file2);
