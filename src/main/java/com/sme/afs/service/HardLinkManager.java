@@ -56,8 +56,11 @@ public class HardLinkManager {
                             source + ", Target: " + target);
         }
 
-        // Remove target if it already exists
+        // Remove target if it already exists – only regular files (no dirs), do not follow links
         if (Files.exists(target)) {
+            if (Files.isDirectory(target)) {
+                throw new IOException("Refusing to overwrite a directory: " + target);
+            }
             Files.delete(target);
             log.debug("Removed existing target file: {}", target);
         }
