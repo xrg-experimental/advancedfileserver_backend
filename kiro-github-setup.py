@@ -437,7 +437,8 @@ jobs:
         PYTHON_SCRIPT
 '''
 
-    with open('.github/workflows/kiro-integration.yml', 'w') as f:
+    with open('.github/workflows/kiro-integration.yml', 'w', encoding='utf-8', newline='\n'
+) as f:
         f.write(workflow_content)
 
 def create_auto_pr_workflow():
@@ -711,7 +712,8 @@ jobs:
           PYTHON_SCRIPT
 '''
 
-    with open('.github/workflows/auto-pr-creation.yml', 'w') as f:
+    with open('.github/workflows/auto-pr-creation.yml', 'w', encoding='utf-8', newline='\n'
+) as f:
         f.write(workflow_content)
 
 def create_templates():
@@ -753,7 +755,8 @@ assignees: ''
 *This issue was auto-generated from Kiro planning documents*
 '''
 
-    with open('.github/ISSUE_TEMPLATE/kiro-task.md', 'w') as f:
+    with open('.github/ISSUE_TEMPLATE/kiro-task.md', 'w', encoding='utf-8', newline='\n'
+) as f:
         f.write(issue_template)
 
     # PR template
@@ -819,7 +822,8 @@ Brief description of the changes implemented in this PR.
 *This PR was created as part of Kiro-planned feature development*
 '''
 
-    with open('.github/pull_request_template.md', 'w') as f:
+    with open('.github/pull_request_template.md', 'w', encoding='utf-8', newline='\n'
+) as f:
         f.write(pr_template)
 
 def create_helper_scripts():
@@ -850,7 +854,8 @@ echo "💡 When you're ready to create a PR, just push this branch:"
 echo "   git push -u origin $BRANCH_NAME"
 '''
 
-    with open('scripts/create-task-branch.sh', 'w') as f:
+    with open('scripts/create-task-branch.sh', 'w', encoding='utf-8', newline='\n'
+) as f:
         f.write(branch_script)
     os.chmod('scripts/create-task-branch.sh', 0o755)
 
@@ -887,7 +892,8 @@ echo "🔗 Check the Actions tab to see the progress"
 echo "📋 Issues and milestone will be created automatically"
 '''
 
-    with open('scripts/setup-kiro-feature.sh', 'w') as f:
+    with open('scripts/setup-kiro-feature.sh', 'w', encoding='utf-8', newline='\n'
+) as f:
         f.write(setup_script)
     os.chmod('scripts/setup-kiro-feature.sh', 0o755)
 
@@ -1024,7 +1030,8 @@ Check the workflow logs in the Actions tab for detailed error information. Look 
 - Task parsing errors (check tasks.md format)
 '''
 
-    with open('kiro-github-integration.md', 'w') as f:
+    with open('kiro-github-integration.md', 'w', encoding='utf-8', newline='\n'
+) as f:
         f.write(doc_content)
 
 def check_tools():
