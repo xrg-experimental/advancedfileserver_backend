@@ -7,6 +7,7 @@ import org.junit.jupiter.api.io.TempDir;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.FileAlreadyExistsException;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -83,7 +84,7 @@ class HardLinkManagerTest {
     }
 
     @Test
-    void testCreateHardLink_OverwritesExistingTarget() throws IOException {
+    void testCreateHardLink_TargetExists_ThrowsFileAlreadyExistsException() throws IOException {
         // Arrange
         Path sourceFile = tempDir.resolve("source.txt");
         Path targetFile = tempDir.resolve("target.txt");
@@ -93,12 +94,10 @@ class HardLinkManagerTest {
         Files.writeString(sourceFile, sourceContent);
         Files.writeString(targetFile, oldTargetContent);
 
-        // Act
-        hardLinkManager.createHardLink(sourceFile, targetFile);
-
-        // Assert
-        assertTrue(Files.exists(targetFile));
-        assertEquals(sourceContent, Files.readString(targetFile));
+        // Act & Assert
+        IOException exception = assertThrows(IOException.class, () ->
+                hardLinkManager.createHardLink(sourceFile, targetFile));
+        assertInstanceOf(FileAlreadyExistsException.class, exception.getCause(), "Expected cause to be FileAlreadyExistsException when target exists");
     }
 
     @Test

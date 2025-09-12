@@ -77,7 +77,10 @@ public class UserService {
             user.setUsername(username); // use the sanitized value
             savedUser = userRepository.save(user);
         } catch (DataIntegrityViolationException e) {
-            throw new AfsException(ErrorCode.CONFLICT, "Username already exists");
+            if (isUniqueUsernameViolation(e)) {
+                throw new AfsException(ErrorCode.CONFLICT, "Username already exists");
+            }
+            throw e;
         }
         return UserDTO.fromUser(savedUser);
     }
@@ -85,7 +88,7 @@ public class UserService {
     @Transactional
     public UserDTO updateUserStatus(String username, boolean enabled) {
         User user = userRepository.findByUsername(username)
-            .orElseThrow(() -> new AfsException(ErrorCode.NOT_FOUND, 
+            .orElseThrow(() -> new AfsException(ErrorCode.NOT_FOUND,
                 String.format("User not found: %s", username)));
 
         // Don't allow disabling admin users
@@ -95,7 +98,7 @@ public class UserService {
         }
 
         user.setEnabled(enabled);
-        
+
         // If disabling user, invalidate all their active sessions
         if (!enabled) {
             sessionService.invalidateUserSessions(username);
@@ -133,19 +136,19 @@ public class UserService {
                     }
                 })
                 .collect(Collectors.toSet());
-            
+
             user.setRoles(validRoles);
         }
 
         // Update groups if provided
         if (request.getGroups() != null && !request.getGroups().isEmpty()) {
             Set<Group> groups = groupRepository.findAllByNameIn(request.getGroups());
-            
+
             // Validate all requested groups exist
             if (groups.size() != request.getGroups().size()) {
                 throw new AfsException(ErrorCode.VALIDATION_FAILED, "One or more groups do not exist");
             }
-            
+
             user.setGroups(groups);
         }
 
@@ -162,7 +165,7 @@ public class UserService {
     public ProfileDTO getCurrentUserProfile(String username) {
         User user = userRepository.findByUsername(username)
             .orElseThrow(() -> new AfsException(ErrorCode.NOT_FOUND, "User not found"));
-        
+
         ProfileDTO profile = new ProfileDTO();
         profile.setUsername(user.getUsername());
         profile.setEmail(user.getEmail());
@@ -191,11 +194,23 @@ public class UserService {
         }
 
         User updatedUser = userRepository.save(user);
-        
+
         ProfileDTO profile = new ProfileDTO();
         profile.setUsername(updatedUser.getUsername());
         profile.setEmail(updatedUser.getEmail());
         profile.setDisplayName(updatedUser.getDisplayName());
         return profile;
+    }
+
+    private static boolean isUniqueUsernameViolation(org.springframework.dao.DataIntegrityViolationException e) {
+        Throwable t = e.getCause();
+        while (t != null) {
+            if (t instanceof org.hibernate.exception.ConstraintViolationException) {
+                String name = ((org.hibernate.exception.ConstraintViolationException) t).getConstraintName();
+                return name != null && name.toLowerCase(java.util.Locale.ROOT).contains("username");
+            }
+            t = t.getCause();
+        }
+        return false;
     }
 }
