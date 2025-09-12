@@ -126,7 +126,7 @@ shared-folder:
 
 afs:
   blob-urls:
-    temp-directory: D:/test/afs-downloads
+    temp-directory: ${BLOB_URL_TEMP_DIR:/tmp/afs-downloads}
 
 ---
 spring:
@@ -138,7 +138,7 @@ shared-folder:
 
 afs:
   blob-urls:
-    temp-directory: /tmp/afs-downloads
+    temp-directory: ${BLOB_URL_TEMP_DIR:/tmp/afs-downloads}
 
 logging:
   level:
