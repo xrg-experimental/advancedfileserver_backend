@@ -79,6 +79,19 @@ shared-folder:
   validate-on-startup: true
   scan-interval-seconds: 300
 
+# Blob URL configuration
+afs:
+  blob-urls:
+    temp-directory: ${BLOB_URL_TEMP_DIR:/tmp/afs-downloads}
+    default-expiration: PT1H # 1 hour
+    cleanup-interval: PT15M # 15 minutes
+    validate-filesystem-on-startup: true
+    max-concurrent-urls: 1000
+    enable-automatic-cleanup: true
+    cleanup-on-startup: true
+    download-url-path: /downloads
+    token-length: 32
+
 ---
 spring:
   config:
@@ -92,6 +105,10 @@ shared-folder:
   package-owner: ${PACKAGE_OWNER:martinfrei}  # Can be set via environment variable
   package-owner-full: ${PACKAGE_OWNER_FULL:HERMES2\martinfrei}  # Can be set via environment variable
   enforce-package-owner: false
+
+afs:
+  blob-urls:
+    temp-directory: D:/demo/afs-downloads
 
 ---
 spring:
@@ -107,6 +124,10 @@ shared-folder:
   package-owner-full: ${PACKAGE_OWNER_FULL:HERMES2\OleEngel}  # Can be set via environment variable
   enforce-package-owner: false
 
+afs:
+  blob-urls:
+    temp-directory: D:/test/afs-downloads
+
 ---
 spring:
   config:
@@ -114,6 +135,10 @@ spring:
       on-profile: "!demo & !test"
 shared-folder:
   base-path: /volume1/shared
+
+afs:
+  blob-urls:
+    temp-directory: /tmp/afs-downloads
 
 logging:
   level:
