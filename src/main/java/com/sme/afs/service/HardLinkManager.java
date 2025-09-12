@@ -94,6 +94,9 @@ public class HardLinkManager {
         }
 
         try {
+            if (Files.isDirectory(hardLinkPath, LinkOption.NOFOLLOW_LINKS)) {
+                throw new IOException("Refusing to delete directory: " + hardLinkPath);
+            }
             Files.delete(hardLinkPath);
             log.info("Successfully deleted hard link: {}", hardLinkPath);
         } catch (IOException e) {
