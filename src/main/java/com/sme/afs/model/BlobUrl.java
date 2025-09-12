@@ -37,12 +37,20 @@ public class BlobUrl {
     /**
      * Path to the original file in the filesystem
      */
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    @jakarta.validation.constraints.NotBlank
+    @jakarta.validation.constraints.Size(max = 1000)
+    @jakarta.validation.constraints.Pattern(regexp = "^[^\\r\\n\\x00]+$", message = "originalPath must not contain control characters")
     @Column(name = "original_path", nullable = false, length = 1000)
     private String originalPath;
 
     /**
      * Path to the hard link file in the temporary directory
      */
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    @jakarta.validation.constraints.NotBlank
+    @jakarta.validation.constraints.Size(max = 1000)
+    @jakarta.validation.constraints.Pattern(regexp = "^[^\\r\\n\\x00]+$", message = "hardLinkPath must not contain control characters")
     @Column(name = "hard_link_path", nullable = false, length = 1000)
     private String hardLinkPath;
 
@@ -57,6 +65,8 @@ public class BlobUrl {
     /**
      * MIME type for proper Content-Type headers
      */
+    @jakarta.validation.constraints.NotBlank
+    @jakarta.validation.constraints.Size(max = 100)
     @jakarta.validation.constraints.Pattern(regexp = "^[\\w.+-]+/[\\w.+-]+$", message = "contentType must be a valid MIME type")
     @Column(name = "content_type", nullable = false, length = 100)
     private String contentType;
@@ -83,6 +93,9 @@ public class BlobUrl {
     /**
      * Username of the user who created this blob URL
      */
+    @jakarta.validation.constraints.NotBlank
+    @jakarta.validation.constraints.Size(max = 100)
+    @jakarta.validation.constraints.Pattern(regexp = "^[^\\r\\n]+$", message = "createdBy must not contain control characters")
     @Column(name = "created_by", nullable = false, length = 100)
     private String createdBy;
 
@@ -91,6 +104,11 @@ public class BlobUrl {
      */
     public boolean isExpired() {
         return LocalDateTime.now().isAfter(expiresAt);
+    }
+
+    @jakarta.validation.constraints.AssertTrue(message = "expiresAt must be after createdAt")
+    public boolean isExpiryAfterCreation() {
+        return createdAt == null || expiresAt == null || expiresAt.isAfter(createdAt);
     }
 
     /**
