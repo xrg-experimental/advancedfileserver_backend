@@ -8,7 +8,6 @@ import java.nio.file.FileStore;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
-import java.nio.file.attribute.BasicFileAttributes;
 
 /**
  * Service for managing filesystem hard links with cross-platform support.
@@ -113,8 +112,18 @@ public class HardLinkManager {
      */
     public int getHardLinkCount(Path filePath) throws IOException {
         try {
-            BasicFileAttributes attrs = Files.readAttributes(filePath, BasicFileAttributes.class);
-            return (int) attrs.size(); // Note: This is a simplified implementation
+            // Prefer platform attribute if available
+            try {
+                Object nlink = Files.getAttribute(filePath, "unix:nlink", LinkOption.NOFOLLOW_LINKS);
+                if (nlink instanceof Number) {
+                    long count = ((Number) nlink).longValue();
+                    return count > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) count;
+                }
+            } catch (UnsupportedOperationException | IllegalArgumentException ignored) {
+                // Not a UNIX-like filesystem; fall through
+            }
+            // Conservative default on non-UNIX platforms
+            return 1;
         } catch (IOException e) {
             log.error("Failed to get hard link count for: {}", filePath, e);
             throw new IOException("Failed to get hard link count: " + e.getMessage(), e);
