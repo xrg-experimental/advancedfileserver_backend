@@ -61,6 +61,7 @@ public class BlobUrl {
     /**
      * File size in bytes for Content-Length headers
      */
+    @jakarta.validation.constraints.PositiveOrZero
     @Column(name = "file_size", nullable = false)
     private Long fileSize;
 
