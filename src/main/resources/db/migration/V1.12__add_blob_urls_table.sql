@@ -19,3 +19,17 @@ CREATE INDEX idx_blob_urls_created_by ON blob_urls(created_by);
 
 -- Index for cleanup queries combining expiration and creation time
 CREATE INDEX idx_blob_urls_cleanup ON blob_urls(expires_at, created_at);
+
+-- Performance indexes matching repository queries
+CREATE INDEX idx_blob_urls_original_path_active ON blob_urls(original_path, expires_at);
+CREATE INDEX idx_blob_urls_created_by_active ON blob_urls(created_by, expires_at);
+
+-- Ensure a hard-link path maps to exactly one token
+CREATE UNIQUE INDEX uq_blob_urls_hard_link_path ON blob_urls(hard_link_path);
+
+-- Data integrity checks
+ALTER TABLE blob_urls
+    ADD CONSTRAINT chk_blob_urls_nonneg_size CHECK (file_size >= 0);
+
+ALTER TABLE blob_urls
+    ADD CONSTRAINT chk_blob_urls_expiry_after_create CHECK (expires_at > created_at);
