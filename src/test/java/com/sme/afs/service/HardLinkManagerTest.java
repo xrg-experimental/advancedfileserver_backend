@@ -9,7 +9,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.FileAlreadyExistsException;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.*;
 
 /**
  * Unit tests for HardLinkManager service.
@@ -40,9 +40,9 @@ class HardLinkManagerTest {
         hardLinkManager.createHardLink(sourceFile, targetFile);
 
         // Assert
-        assertTrue(Files.exists(targetDir), "Target directory should be created");
-        assertTrue(Files.exists(targetFile), "Target file should exist");
-        assertEquals(testContent, Files.readString(targetFile));
+        assertThat(targetDir).as("Target directory should be created").exists();
+        assertThat(targetFile).as("Target file should exist").exists();
+        assertThat(Files.readString(targetFile)).isEqualTo(testContent);
     }
 
     @Test
@@ -59,9 +59,9 @@ class HardLinkManagerTest {
         Files.delete(sourceFile);
 
         // Assert - Target should still exist and be accessible
-        assertFalse(Files.exists(sourceFile));
-        assertTrue(Files.exists(targetFile));
-        assertEquals(testContent, Files.readString(targetFile));
+        assertThat(sourceFile).doesNotExist();
+        assertThat(targetFile).exists();
+        assertThat(Files.readString(targetFile)).isEqualTo(testContent);
     }
 
     @Test
@@ -79,8 +79,8 @@ class HardLinkManagerTest {
         Files.writeString(sourceFile, modifiedContent);
 
         // Assert - Both files should reflect the change (they're hard linked)
-        assertEquals(modifiedContent, Files.readString(sourceFile));
-        assertEquals(modifiedContent, Files.readString(targetFile));
+        assertThat(Files.readString(sourceFile)).isEqualTo(modifiedContent);
+        assertThat(Files.readString(targetFile)).isEqualTo(modifiedContent);
     }
 
     @Test
@@ -95,9 +95,9 @@ class HardLinkManagerTest {
         Files.writeString(targetFile, oldTargetContent);
 
         // Act & Assert
-        IOException exception = assertThrows(IOException.class, () ->
-                hardLinkManager.createHardLink(sourceFile, targetFile));
-        assertInstanceOf(FileAlreadyExistsException.class, exception.getCause(), "Expected cause to be FileAlreadyExistsException when target exists");
+        assertThatThrownBy(() -> hardLinkManager.createHardLink(sourceFile, targetFile))
+                .isInstanceOf(IOException.class)
+                .hasCauseInstanceOf(FileAlreadyExistsException.class);
     }
 
     @Test
@@ -107,10 +107,9 @@ class HardLinkManagerTest {
         Path targetFile = tempDir.resolve("target.txt");
 
         // Act & Assert
-        IOException exception = assertThrows(IOException.class, () ->
-                hardLinkManager.createHardLink(nonExistentSource, targetFile));
-
-        assertTrue(exception.getMessage().contains("Source file does not exist"));
+        assertThatThrownBy(() -> hardLinkManager.createHardLink(nonExistentSource, targetFile))
+                .isInstanceOf(IOException.class)
+                .hasMessageContaining("Source file does not exist");
     }
 
     @Test
@@ -121,10 +120,9 @@ class HardLinkManagerTest {
         Files.createDirectory(sourceDir);
 
         // Act & Assert
-        IOException exception = assertThrows(IOException.class, () ->
-                hardLinkManager.createHardLink(sourceDir, targetFile));
-
-        assertTrue(exception.getMessage().contains("Source is not a regular file"));
+        assertThatThrownBy(() -> hardLinkManager.createHardLink(sourceDir, targetFile))
+                .isInstanceOf(IOException.class)
+                .hasMessageContaining("Source is not a regular file");
     }
 
     @Test
@@ -140,13 +138,13 @@ class HardLinkManagerTest {
         hardLinkManager.createHardLink(sourceFile, targetFile);
 
         // Assert
-        assertTrue(Files.exists(targetFile), "Target hard link should exist");
-        assertEquals(testContent, Files.readString(targetFile), "Content should match source");
+        assertThat(targetFile).as("Target hard link should exist").exists();
+        assertThat(Files.readString(targetFile)).as("Content should match source").isEqualTo(testContent);
 
         // Verify both files point to the same content
         byte[] sourceContent = Files.readAllBytes(sourceFile);
         byte[] targetContent = Files.readAllBytes(targetFile);
-        assertArrayEquals(sourceContent, targetContent, "Hard link content should match source");
+        assertThat(targetContent).as("Hard link content should match source").isEqualTo(sourceContent);
     }
 
     @Test
@@ -162,8 +160,8 @@ class HardLinkManagerTest {
         hardLinkManager.createHardLink(sourceFile, targetFile);
 
         // Assert
-        assertTrue(Files.exists(targetFile));
-        assertEquals(testContent, Files.readString(targetFile));
+        assertThat(targetFile).exists();
+        assertThat(Files.readString(targetFile)).isEqualTo(testContent);
     }
 
     @Test
@@ -172,7 +170,7 @@ class HardLinkManagerTest {
         Path nonExistentFile = tempDir.resolve("nonexistent.txt");
 
         // Act & Assert - Should not throw exception
-        assertDoesNotThrow(() -> hardLinkManager.deleteHardLink(nonExistentFile));
+        assertThatCode(() -> hardLinkManager.deleteHardLink(nonExistentFile)).doesNotThrowAnyException();
     }
 
     @Test
@@ -186,15 +184,15 @@ class HardLinkManagerTest {
         hardLinkManager.createHardLink(sourceFile, targetFile);
 
         // Verify hard link exists
-        assertTrue(Files.exists(targetFile));
+        assertThat(targetFile).exists();
 
         // Act
         hardLinkManager.deleteHardLink(targetFile);
 
         // Assert
-        assertFalse(Files.exists(targetFile), "Hard link should be deleted");
-        assertTrue(Files.exists(sourceFile), "Original file should still exist");
-        assertEquals(testContent, Files.readString(sourceFile), "Original file content should be unchanged");
+        assertThat(targetFile).as("Hard link should be deleted").doesNotExist();
+        assertThat(sourceFile).as("Original file should still exist").exists();
+        assertThat(Files.readString(sourceFile)).as("Original file content should be unchanged").isEqualTo(testContent);
     }
 
     @Test
@@ -210,7 +208,7 @@ class HardLinkManagerTest {
         boolean result = hardLinkManager.isOnSameFilesystem(file1, file2);
 
         // Assert
-        assertTrue(result, "Files in same directory should be on same filesystem");
+        assertThat(result).as("Files in same directory should be on same filesystem").isTrue();
     }
 
     @Test
@@ -229,13 +227,13 @@ class HardLinkManagerTest {
         boolean result = hardLinkManager.isOnSameFilesystem(file1, file2);
 
         // Assert
-        assertTrue(result, "Files in subdirectories should be on same filesystem");
+        assertThat(result).as("Files in subdirectories should be on same filesystem").isTrue();
     }
 
     @Test
     void testValidateFilesystemSupport_Success() {
         // Act & Assert - Should not throw exception on most modern filesystems
-        assertDoesNotThrow(() -> hardLinkManager.validateFilesystemSupport(tempDir));
+        assertThatCode(() -> hardLinkManager.validateFilesystemSupport(tempDir)).doesNotThrowAnyException();
     }
 
     @Test
@@ -243,7 +241,7 @@ class HardLinkManagerTest {
         Path sourceFile = tempDir.resolve("source.txt");
         Files.writeString(sourceFile, "x");
         int count = hardLinkManager.getHardLinkCount(sourceFile);
-        assertTrue(count >= 1);
+        assertThat(count).isGreaterThanOrEqualTo(1);
     }
 
     @Test
@@ -254,6 +252,6 @@ class HardLinkManagerTest {
         int before = hardLinkManager.getHardLinkCount(sourceFile);
         hardLinkManager.createHardLink(sourceFile, targetFile);
         int after = hardLinkManager.getHardLinkCount(sourceFile);
-        assertTrue(after >= before); // On UNIX likely after == before+1; on fallback both may be 1
+        assertThat(after).isGreaterThanOrEqualTo(before); // On UNIX likely after == before+1; on fallback both may be 1
     }
 }
