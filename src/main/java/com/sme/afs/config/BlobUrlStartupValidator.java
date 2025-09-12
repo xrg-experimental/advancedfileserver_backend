@@ -8,6 +8,7 @@ import org.springframework.boot.ApplicationRunner;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 
 /**
@@ -31,11 +32,20 @@ public class BlobUrlStartupValidator implements ApplicationRunner {
     public void run(ApplicationArguments args) {
         final String tempDirStr = blobUrlProperties.getTempDirectory();
         final String basePathStr = sharedFolderProperties.getBasePath();
+        if (tempDirStr == null || tempDirStr.isBlank()) {
+            throw new IllegalStateException("afs.blob-urls.temp-directory is not configured");
+        }
 
         final Path tempDir = Path.of(tempDirStr).normalize().toAbsolutePath();
+        if (Files.exists(tempDir) && Files.isSymbolicLink(tempDir)) {
+            throw new IllegalStateException("afs.blob-urls.temp-directory must not be a symbolic link: " + tempDir);
+        }
         final Path basePath = (basePathStr != null && !basePathStr.isBlank())
                 ? Path.of(basePathStr).normalize().toAbsolutePath()
                 : null;
+        if (basePath != null && Files.exists(basePath) && Files.isSymbolicLink(basePath)) {
+            throw new IllegalStateException("shared-folder.base-path must not be a symbolic link: " + basePath);
+        }
 
         // Validate hard link support in the temp directory if enabled
         if (blobUrlProperties.isValidateFilesystemOnStartup()) {
