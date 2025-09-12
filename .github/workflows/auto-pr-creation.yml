@@ -1,0 +1,267 @@
+# .github/workflows/auto-pr-creation.yml
+name: Auto PR Creation from Completed Tasks
+
+on:
+  push:
+    branches:
+      - 'feature/task-*'
+      - 'task/*'
+      - 'feat/task-*'
+  workflow_dispatch:
+    inputs:
+      task_number:
+        description: 'Task number to create PR for'
+        required: true
+      base_branch:
+        description: 'Base branch for PR'
+        required: false
+        default: 'main'
+
+jobs:
+  create-pr:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Extract task number and create PR
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python3 << 'PYTHON_SCRIPT'
+          import os
+          import subprocess
+          import sys
+          import json
+
+          def extract_task_number():
+              """Extract task number from branch name or workflow input"""
+              if os.environ.get('GITHUB_EVENT_NAME') == 'workflow_dispatch':
+                  return os.environ.get('INPUT_TASK_NUMBER', '')
+              else:
+                  branch_name = os.environ.get('GITHUB_REF_NAME', '')
+                  import re
+                  match = re.search(r'\d+', branch_name)
+                  return match.group() if match else ''
+
+          def find_issue_for_task(task_number):
+              """Find the GitHub issue for a specific task number"""
+              cmd = ['gh', 'issue', 'list', '--search', f'Task {task_number}:', '--state', 'open', '--limit', '1']
+
+              try:
+                  result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+                  lines = result.stdout.strip().split('\n')
+
+                  if not lines or not lines[0]:
+                      return None, None, None
+
+                  # Parse the first line to extract issue number and title
+                  first_line = lines[0]
+                  parts = first_line.split('\t')
+                  if len(parts) >= 2:
+                      issue_number = parts[0]
+                      issue_title = parts[1]
+                      return issue_number, issue_title, None
+
+                  return None, None, None
+              except subprocess.CalledProcessError as e:
+                  print(f"Error finding issue: {e}")
+                  return None, None, None
+
+          def check_existing_pr(branch_name, base_branch):
+              """Check if PR already exists for this branch"""
+              cmd = ['gh', 'pr', 'list', '--head', branch_name, '--base', base_branch]
+
+              try:
+                  result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+                  lines = result.stdout.strip().split('\n')
+
+                  if not lines or not lines[0]:
+                      return None
+
+                  # Parse the first line to extract PR number
+                  first_line = lines[0]
+                  parts = first_line.split('\t')
+                  if len(parts) >= 1:
+                      return parts[0]
+
+                  return None
+              except subprocess.CalledProcessError:
+                  return None
+
+          def get_commit_summary(base_branch, current_branch):
+              """Get commit summary since branching"""
+              cmd = ['git', 'log', '--pretty=format:- %s', f'{base_branch}..{current_branch}']
+
+              try:
+                  result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+                  commits = result.stdout.strip()
+                  return commits if commits else '- Initial commit for this task'
+              except subprocess.CalledProcessError:
+                  return '- Initial commit for this task'
+
+          def find_epic_issue():
+              """Find the epic issue"""
+              cmd = ['gh', 'issue', 'list', '--search', 'Epic:', '--state', 'open']
+
+              try:
+                  result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+                  lines = result.stdout.strip().split('\n')
+
+                  if not lines or not lines[0]:
+                      return None
+
+                  # Parse the first line to extract issue number
+                  first_line = lines[0]
+                  parts = first_line.split('\t')
+                  if len(parts) >= 1:
+                      return parts[0]
+
+                  return None
+              except subprocess.CalledProcessError:
+                  return None
+
+          def create_pull_request(task_number, issue_number, issue_title, milestone_number, commits, base_branch, current_branch):
+              """Create the pull request"""
+              epic_number = find_epic_issue()
+
+              # Clean up issue title for PR title
+              pr_title = issue_title.replace(f'Task {task_number}: ', '') if issue_title else f'Task {task_number}'
+
+              pr_body = f"""## Task {task_number}: {pr_title}
+
+          ### Description
+          This PR implements the changes for Task {task_number} as part of the Kiro-planned feature development.
+
+          ### Related Issues
+          - Resolves #{issue_number}"""
+
+              if epic_number:
+                  pr_body += f"\n- Related to Epic #{epic_number}"
+
+              pr_body += f"""
+
+          ### Changes Made
+          {commits}
+
+          ### Testing Checklist
+          - [ ] Unit tests added/updated
+          - [ ] Integration tests pass
+          - [ ] Manual testing completed
+          - [ ] Edge cases tested
+          - [ ] Error handling tested
+
+          ### Code Quality Checklist
+          - [ ] Code follows project standards
+          - [ ] TypeScript types properly defined
+          - [ ] Error handling implemented
+          - [ ] Loading states implemented
+          - [ ] No console.log statements left in code
+
+          ### Review Checklist
+          - [ ] Functionality matches requirements
+          - [ ] Code is readable and maintainable
+          - [ ] Performance considerations addressed
+          - [ ] Security considerations addressed
+          - [ ] Accessibility requirements met
+
+          ### Deployment Notes
+          <!-- Add any special deployment considerations -->
+
+          ---
+          *This PR was auto-generated from Kiro task tracking*"""
+
+              cmd = [
+                  'gh', 'pr', 'create',
+                  '--title', pr_title,
+                  '--body', pr_body,
+                  '--base', base_branch,
+                  '--head', current_branch,
+                  '--label', 'task,kiro-generated'
+              ]
+
+              try:
+                  result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+                  # Extract PR URL from output
+                  pr_url = (result.stdout or "").strip()
+
+                  if pr_url:
+                      # Extract PR number from URL
+                      pr_number = pr_url.rsplit('/', 1)[-1] if pr_url.startswith('http') else None
+
+                      if pr_number and issue_number:
+                          # Link PR to issue
+                          comment_cmd = ['gh', 'issue', 'comment', str(issue_number), '--body', f'🔗 Pull Request created: {pr_url}']
+                          subprocess.run(comment_cmd, check=True)
+
+                      print(f"✅ Created PR: {pr_title}")
+                      print(f"PR URL: {pr_url}")
+
+                      return pr_number
+                  else:
+                      print(f"✅ Created PR: {pr_title}")
+                      return True
+              except subprocess.CalledProcessError as e:
+                  print(f"Error creating PR: {e}")
+                  print(f"Command output: {e.stdout if hasattr(e, 'stdout') else 'N/A'}")
+                  print(f"Command error: {e.stderr if hasattr(e, 'stderr') else 'N/A'}")
+                  return None
+
+          # Main execution
+          task_number = extract_task_number()
+          if not task_number:
+              print("No task number found in branch name or input")
+              sys.exit(1)
+
+          print(f"Task number: {task_number}")
+
+          branch_name = os.environ.get('GITHUB_REF_NAME', '')
+          base_branch = os.environ.get('INPUT_BASE_BRANCH', 'main')
+
+          print(f"Branch: {branch_name}")
+          print(f"Base branch: {base_branch}")
+
+          # Check if PR already exists
+          existing_pr = check_existing_pr(branch_name, base_branch)
+          if existing_pr:
+              print(f"PR already exists: #{existing_pr}")
+              sys.exit(0)
+
+          # Find corresponding issue
+          issue_number, issue_title, milestone_number = find_issue_for_task(task_number)
+          if not issue_number:
+              print(f"No open issue found for task {task_number}")
+              print("Creating PR without linked issue...")
+              issue_number = None
+              issue_title = f"Task {task_number}"
+
+          if issue_number:
+              print(f"Found issue #{issue_number}: {issue_title}")
+
+          # Get commit summary
+          commits = get_commit_summary(base_branch, branch_name)
+
+          # Create PR
+          pr_result = create_pull_request(
+              task_number, issue_number, issue_title,
+              milestone_number, commits, base_branch, branch_name
+          )
+
+          if pr_result:
+              print(f"Successfully created PR for task {task_number}")
+          else:
+              print("Failed to create PR")
+              sys.exit(1)
+          PYTHON_SCRIPT
