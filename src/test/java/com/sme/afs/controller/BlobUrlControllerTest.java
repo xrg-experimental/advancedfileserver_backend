@@ -1,5 +1,6 @@
 package com.sme.afs.controller;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sme.afs.dto.BlobUrlCreateRequest;
 import com.sme.afs.dto.BlobUrlResponse;
@@ -19,13 +20,15 @@ import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 
 import java.time.OffsetDateTime;
+import java.util.Map;
 
+import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -47,8 +50,9 @@ class BlobUrlControllerTest {
 
     @BeforeEach
     void setUp() {
+        // Arrange
         createRequest = new BlobUrlCreateRequest("/shared/test-file.pdf");
-        
+
         blobUrlResponse = BlobUrlResponse.builder()
                 .downloadUrl("/api/blob-urls/downloads/test-token-123")
                 .token("test-token-123")
@@ -63,19 +67,27 @@ class BlobUrlControllerTest {
     @Test
     @WithMockUser(roles = "USER")
     void createBlobUrl_Success() throws Exception {
+        // Arrange
         when(blobUrlService.createBlobUrl(anyString())).thenReturn(blobUrlResponse);
 
-        mockMvc.perform(post("/blob-urls/create")
+        // Act
+        MvcResult result = mockMvc.perform(post("/blob-urls/create")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(createRequest)))
-                .andExpect(status().isOk())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.downloadUrl").value("/api/blob-urls/downloads/test-token-123"))
-                .andExpect(jsonPath("$.token").value("test-token-123"))
-                .andExpect(jsonPath("$.filename").value("test-file.pdf"))
-                .andExpect(jsonPath("$.fileSize").value(1024))
-                .andExpect(jsonPath("$.contentType").value("application/pdf"))
-                .andExpect(jsonPath("$.status").value("active"));
+                .andReturn();
+
+        // Assert
+        var response = result.getResponse();
+        assertThat(response.getStatus()).isEqualTo(200);
+        assertThat(response.getContentType()).isEqualTo(MediaType.APPLICATION_JSON_VALUE);
+
+        BlobUrlResponse body = objectMapper.readValue(response.getContentAsString(), BlobUrlResponse.class);
+        assertThat(body.getDownloadUrl()).isEqualTo("/api/blob-urls/downloads/test-token-123");
+        assertThat(body.getToken()).isEqualTo("test-token-123");
+        assertThat(body.getFilename()).isEqualTo("test-file.pdf");
+        assertThat(body.getFileSize()).isEqualTo(1024L);
+        assertThat(body.getContentType()).isEqualTo("application/pdf");
+        assertThat(body.getStatus()).isEqualTo("active");
 
         verify(blobUrlService).createBlobUrl("/shared/test-file.pdf");
     }
@@ -83,77 +95,120 @@ class BlobUrlControllerTest {
     @Test
     @WithMockUser(roles = "USER")
     void createBlobUrl_FileNotFound() throws Exception {
+        // Arrange
         when(blobUrlService.createBlobUrl(anyString()))
                 .thenThrow(new FileNotFoundException("/shared/nonexistent.pdf"));
 
-        mockMvc.perform(post("/blob-urls/create")
+        // Act
+        MvcResult result = mockMvc.perform(post("/blob-urls/create")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(createRequest)))
-                .andExpect(status().isNotFound())
-                .andExpect(content().contentType("application/problem+json"))
-                .andExpect(jsonPath("$.code").value("FILE_NOT_FOUND"));
+                .andReturn();
+
+        // Assert
+        var response = result.getResponse();
+        assertThat(response.getStatus()).isEqualTo(404);
+        assertThat(response.getContentType()).isEqualTo("application/problem+json");
+        Map<String, Object> problem = objectMapper.readValue(response.getContentAsString(), new TypeReference<>() {});
+        assertThat(problem.get("code")).isEqualTo("FILE_NOT_FOUND");
     }
 
     @Test
     @WithMockUser(roles = "USER")
     void createBlobUrl_CrossFilesystemError() throws Exception {
+        // Arrange
         when(blobUrlService.createBlobUrl(anyString()))
                 .thenThrow(new CrossFilesystemException("Cannot create hard link across filesystems"));
 
-        mockMvc.perform(post("/blob-urls/create")
+        // Act
+        MvcResult result = mockMvc.perform(post("/blob-urls/create")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(createRequest)))
-                .andExpect(status().isBadRequest())
-                .andExpect(content().contentType("application/problem+json"))
-                .andExpect(jsonPath("$.code").value("CROSS_FILESYSTEM"));
+                .andReturn();
+
+        // Assert
+        var response = result.getResponse();
+        assertThat(response.getStatus()).isEqualTo(400);
+        assertThat(response.getContentType()).isEqualTo("application/problem+json");
+        Map<String, Object> problem = objectMapper.readValue(response.getContentAsString(), new TypeReference<>() {});
+        assertThat(problem.get("code")).isEqualTo("CROSS_FILESYSTEM");
     }
 
     @Test
     @WithMockUser(roles = "USER")
     void createBlobUrl_LinkCreationFailed() throws Exception {
+        // Arrange
         when(blobUrlService.createBlobUrl(anyString()))
                 .thenThrow(new LinkCreationFailedException("Failed to create hard link"));
 
-        mockMvc.perform(post("/blob-urls/create")
+        // Act
+        MvcResult result = mockMvc.perform(post("/blob-urls/create")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(createRequest)))
-                .andExpect(status().isInternalServerError())
-                .andExpect(content().contentType("application/problem+json"))
-                .andExpect(jsonPath("$.code").value("LINK_CREATION_FAILED"));
+                .andReturn();
+
+        // Assert
+        var response = result.getResponse();
+        assertThat(response.getStatus()).isEqualTo(500);
+        assertThat(response.getContentType()).isEqualTo("application/problem+json");
+        Map<String, Object> problem = objectMapper.readValue(response.getContentAsString(), new TypeReference<>() {});
+        assertThat(problem.get("code")).isEqualTo("LINK_CREATION_FAILED");
     }
 
     @Test
     @WithMockUser(roles = "USER")
     void createBlobUrl_ValidationError_EmptyPath() throws Exception {
+        // Arrange
         BlobUrlCreateRequest invalidRequest = new BlobUrlCreateRequest("");
 
-        mockMvc.perform(post("/blob-urls/create")
+        // Act
+        MvcResult result = mockMvc.perform(post("/blob-urls/create")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(invalidRequest)))
-                .andExpect(status().isBadRequest())
-                .andExpect(content().contentType("application/problem+json"))
-                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+                .andReturn();
+
+        // Assert
+        var response = result.getResponse();
+        assertThat(response.getStatus()).isEqualTo(400);
+        assertThat(response.getContentType()).isEqualTo("application/problem+json");
+        Map<String, Object> problem = objectMapper.readValue(response.getContentAsString(), new TypeReference<>() {});
+        assertThat(problem.get("code")).isEqualTo("VALIDATION_FAILED");
     }
 
     @Test
     void createBlobUrl_Unauthorized() throws Exception {
-        mockMvc.perform(post("/blob-urls/create")
+        // Arrange
+        // (no stubbing required)
+
+        // Act
+        MvcResult result = mockMvc.perform(post("/blob-urls/create")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(createRequest)))
-                .andExpect(status().isUnauthorized());
+                .andReturn();
+
+        // Assert
+        assertThat(result.getResponse().getStatus()).isEqualTo(401);
     }
 
     @Test
     @WithMockUser(roles = "USER")
     void getBlobUrlStatus_Success() throws Exception {
+        // Arrange
         when(blobUrlService.getBlobUrlStatus("test-token-123")).thenReturn(blobUrlResponse);
 
-        mockMvc.perform(get("/blob-urls/test-token-123/status"))
-                .andExpect(status().isOk())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.token").value("test-token-123"))
-                .andExpect(jsonPath("$.status").value("active"))
-                .andExpect(jsonPath("$.filename").value("test-file.pdf"));
+        // Act
+        MvcResult result = mockMvc.perform(get("/blob-urls/test-token-123/status"))
+                .andReturn();
+
+        // Assert
+        var response = result.getResponse();
+        assertThat(response.getStatus()).isEqualTo(200);
+        assertThat(response.getContentType()).isEqualTo(MediaType.APPLICATION_JSON_VALUE);
+
+        BlobUrlResponse body = objectMapper.readValue(response.getContentAsString(), BlobUrlResponse.class);
+        assertThat(body.getToken()).isEqualTo("test-token-123");
+        assertThat(body.getStatus()).isEqualTo("active");
+        assertThat(body.getFilename()).isEqualTo("test-file.pdf");
 
         verify(blobUrlService).getBlobUrlStatus("test-token-123");
     }
@@ -161,33 +216,53 @@ class BlobUrlControllerTest {
     @Test
     @WithMockUser(roles = "USER")
     void getBlobUrlStatus_TokenInvalid() throws Exception {
+        // Arrange
         when(blobUrlService.getBlobUrlStatus("invalid-token"))
                 .thenThrow(new TokenInvalidException("invalid-token"));
 
-        mockMvc.perform(get("/blob-urls/invalid-token/status"))
-                .andExpect(status().isNotFound())
-                .andExpect(content().contentType("application/problem+json"))
-                .andExpect(jsonPath("$.code").value("TOKEN_INVALID"));
+        // Act
+        MvcResult result = mockMvc.perform(get("/blob-urls/invalid-token/status"))
+                .andReturn();
+
+        // Assert
+        var response = result.getResponse();
+        assertThat(response.getStatus()).isEqualTo(404);
+        assertThat(response.getContentType()).isEqualTo("application/problem+json");
+        Map<String, Object> problem = objectMapper.readValue(response.getContentAsString(), new TypeReference<>() {});
+        assertThat(problem.get("code")).isEqualTo("TOKEN_INVALID");
     }
 
     @Test
     void getBlobUrlStatus_Unauthorized() throws Exception {
-        mockMvc.perform(get("/blob-urls/test-token-123/status"))
-                .andExpect(status().isUnauthorized());
+        // Arrange
+        // (no stubbing required)
+
+        // Act
+        MvcResult result = mockMvc.perform(get("/blob-urls/test-token-123/status"))
+                .andReturn();
+
+        // Assert
+        assertThat(result.getResponse().getStatus()).isEqualTo(401);
     }
 
     @Test
     void downloadFile_Success() throws Exception {
+        // Arrange
         Resource mockResource = new ByteArrayResource("test file content".getBytes());
         when(blobUrlService.validateAndGetFile("test-token-123")).thenReturn(mockResource);
         when(blobUrlService.getBlobUrlStatus("test-token-123")).thenReturn(blobUrlResponse);
 
-        mockMvc.perform(get("/blob-urls/downloads/test-token-123"))
-                .andExpect(status().isOk())
-                .andExpect(content().contentType("application/pdf"))
-                .andExpect(header().string("Content-Disposition", "attachment; filename=\"test-file.pdf\""))
-                .andExpect(header().string("Accept-Ranges", "bytes"))
-                .andExpect(header().string("Content-Length", "1024"));
+        // Act
+        MvcResult result = mockMvc.perform(get("/blob-urls/downloads/test-token-123"))
+                .andReturn();
+
+        // Assert
+        var response = result.getResponse();
+        assertThat(response.getStatus()).isEqualTo(200);
+        assertThat(response.getContentType()).isEqualTo("application/pdf");
+        assertThat(response.getHeader("Content-Disposition")).isEqualTo("attachment; filename=\"test-file.pdf\"");
+        assertThat(response.getHeader("Accept-Ranges")).isEqualTo("bytes");
+        assertThat(response.getHeader("Content-Length")).isEqualTo("1024");
 
         verify(blobUrlService).validateAndGetFile("test-token-123");
         verify(blobUrlService).getBlobUrlStatus("test-token-123");
@@ -195,29 +270,42 @@ class BlobUrlControllerTest {
 
     @Test
     void downloadFile_TokenInvalid() throws Exception {
+        // Arrange
         when(blobUrlService.validateAndGetFile("invalid-token"))
                 .thenThrow(new TokenInvalidException("invalid-token"));
 
-        mockMvc.perform(get("/blob-urls/downloads/invalid-token"))
-                .andExpect(status().isNotFound())
-                .andExpect(content().contentType("application/problem+json"))
-                .andExpect(jsonPath("$.code").value("TOKEN_INVALID"));
+        // Act
+        MvcResult result = mockMvc.perform(get("/blob-urls/downloads/invalid-token"))
+                .andReturn();
+
+        // Assert
+        var response = result.getResponse();
+        assertThat(response.getStatus()).isEqualTo(404);
+        assertThat(response.getContentType()).isEqualTo("application/problem+json");
+        Map<String, Object> problem = objectMapper.readValue(response.getContentAsString(), new TypeReference<>() {});
+        assertThat(problem.get("code")).isEqualTo("TOKEN_INVALID");
 
         verify(blobUrlService, never()).getBlobUrlStatus(anyString());
     }
 
     @Test
     void downloadFile_RangeRequest() throws Exception {
+        // Arrange
         Resource mockResource = new ByteArrayResource(new byte[1024]);
         when(blobUrlService.validateAndGetFile("test-token-123")).thenReturn(mockResource);
         when(blobUrlService.getBlobUrlStatus("test-token-123")).thenReturn(blobUrlResponse);
 
-        mockMvc.perform(get("/blob-urls/downloads/test-token-123")
+        // Act
+        MvcResult result = mockMvc.perform(get("/blob-urls/downloads/test-token-123")
                         .header("Range", "bytes=0-499"))
-                .andExpect(status().isPartialContent())
-                .andExpect(header().string("Content-Range", "bytes 0-499/1024"))
-                .andExpect(header().string("Accept-Ranges", "bytes"))
-                .andExpect(header().longValue("Content-Length", 500L));
+                .andReturn();
+
+        // Assert
+        var response = result.getResponse();
+        assertThat(response.getStatus()).isEqualTo(206);
+        assertThat(response.getHeader("Content-Range")).isEqualTo("bytes 0-499/1024");
+        assertThat(response.getHeader("Accept-Ranges")).isEqualTo("bytes");
+        assertThat(response.getContentLengthLong()).isEqualTo(500L);
 
         verify(blobUrlService).validateAndGetFile("test-token-123");
         verify(blobUrlService).getBlobUrlStatus("test-token-123");
@@ -225,25 +313,36 @@ class BlobUrlControllerTest {
 
     @Test
     void downloadFile_InvalidRangeRequest() throws Exception {
+        // Arrange
         Resource mockResource = new ByteArrayResource("test file content".getBytes());
         when(blobUrlService.validateAndGetFile("test-token-123")).thenReturn(mockResource);
         when(blobUrlService.getBlobUrlStatus("test-token-123")).thenReturn(blobUrlResponse);
 
-        mockMvc.perform(get("/blob-urls/downloads/test-token-123")
+        // Act
+        MvcResult result = mockMvc.perform(get("/blob-urls/downloads/test-token-123")
                         .header("Range", "bytes=2000-3000")) // Range beyond file size
-                .andExpect(status().isRequestedRangeNotSatisfiable())
-                .andExpect(header().string("Content-Range", "bytes */1024"));
+                .andReturn();
+
+        // Assert
+        var response = result.getResponse();
+        assertThat(response.getStatus()).isEqualTo(416);
+        assertThat(response.getHeader("Content-Range")).isEqualTo("bytes */1024");
     }
 
     @Test
     void downloadFile_NoAuthentication_AllowedForDownload() throws Exception {
+        // Arrange
         // Download endpoint should allow unauthenticated access for valid tokens
         Resource mockResource = new ByteArrayResource("test file content".getBytes());
         when(blobUrlService.validateAndGetFile("test-token-123")).thenReturn(mockResource);
         when(blobUrlService.getBlobUrlStatus("test-token-123")).thenReturn(blobUrlResponse);
 
-        mockMvc.perform(get("/blob-urls/downloads/test-token-123"))
-                .andExpect(status().isOk())
-                .andExpect(content().contentType("application/pdf"));
+        // Act
+        MvcResult result = mockMvc.perform(get("/blob-urls/downloads/test-token-123"))
+                .andReturn();
+
+        // Assert
+        assertThat(result.getResponse().getStatus()).isEqualTo(200);
+        assertThat(result.getResponse().getContentType()).isEqualTo("application/pdf");
     }
 }
