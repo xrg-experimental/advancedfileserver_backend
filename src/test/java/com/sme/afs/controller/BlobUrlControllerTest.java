@@ -208,7 +208,7 @@ class BlobUrlControllerTest {
 
     @Test
     void downloadFile_RangeRequest() throws Exception {
-        Resource mockResource = new ByteArrayResource("test file content".getBytes());
+        Resource mockResource = new ByteArrayResource(new byte[1024]);
         when(blobUrlService.validateAndGetFile("test-token-123")).thenReturn(mockResource);
         when(blobUrlService.getBlobUrlStatus("test-token-123")).thenReturn(blobUrlResponse);
 
@@ -216,7 +216,8 @@ class BlobUrlControllerTest {
                         .header("Range", "bytes=0-499"))
                 .andExpect(status().isPartialContent())
                 .andExpect(header().string("Content-Range", "bytes 0-499/1024"))
-                .andExpect(header().string("Accept-Ranges", "bytes"));
+                .andExpect(header().string("Accept-Ranges", "bytes"))
+                .andExpect(header().longValue("Content-Length", 500L));
 
         verify(blobUrlService).validateAndGetFile("test-token-123");
         verify(blobUrlService).getBlobUrlStatus("test-token-123");
