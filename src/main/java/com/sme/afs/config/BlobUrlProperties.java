@@ -80,4 +80,40 @@ public class BlobUrlProperties {
     @jakarta.validation.constraints.Min(16)
     @jakarta.validation.constraints.Max(64)
     private int tokenLength = 32;
+
+    private RateLimit rateLimit = new RateLimit();
+
+    @Data
+    public static class RateLimit {
+        private boolean enabled = true;
+        private DownloadLimit downloadPerIp = new DownloadLimit(50, 5); // 50 requests per 5 minutes per IP
+        private DownloadLimit downloadPerUser = new DownloadLimit(100, 5); // 100 requests per 5 minutes per user
+        private TokenLimit tokenValidation = new TokenLimit(20, 60); // 20 attempts per 60 seconds
+
+        @Data
+        public static class DownloadLimit {
+            private int maxRequests;
+            private int windowMinutes;
+
+            public DownloadLimit() {}
+
+            public DownloadLimit(int maxRequests, int windowMinutes) {
+                this.maxRequests = maxRequests;
+                this.windowMinutes = windowMinutes;
+            }
+        }
+
+        @Data
+        public static class TokenLimit {
+            private int maxRequests;
+            private int windowSeconds;
+
+            public TokenLimit() {}
+
+            public TokenLimit(int maxRequests, int windowSeconds) {
+                this.maxRequests = maxRequests;
+                this.windowSeconds = windowSeconds;
+            }
+        }
+    }
 }

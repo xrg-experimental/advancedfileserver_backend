@@ -12,6 +12,7 @@ import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import java.io.IOException;
 import java.net.MalformedURLException;
@@ -37,6 +38,9 @@ public class BlobUrlService {
     private final HardLinkManager hardLinkManager;
     private final FileService fileService;
     private final BlobUrlProperties blobUrlProperties;
+
+    @Autowired(required = false)
+    private RateLimitService rateLimitService;
 
     /**
      * Creates a temporary blob URL for the specified file.
@@ -134,6 +138,44 @@ public class BlobUrlService {
         }
 
         return Optional.of(blobUrl);
+    }
+
+    /**
+     * Validates a token and returns the file resource for download with rate limiting checks.
+     * This overload should be used by controllers that can provide client IP and username.
+     */
+    @Transactional(readOnly = true)
+    public Resource validateAndGetFile(String token, String clientIp, String username) {
+        log.debug("Validating token and getting file for download: {} from IP: {}", token, clientIp);
+
+        // Rate limiting checks (optional if service is available and enabled)
+        try {
+            if (rateLimitService != null && blobUrlProperties.getRateLimit().isEnabled()) {
+                if (clientIp != null && !rateLimitService.isAllowed("download:ip:" + clientIp)) {
+                    throw new AfsException(ErrorCode.TOO_MANY_REQUESTS,
+                            "Rate limit exceeded for IP address. Please try again later.");
+                }
+                if (username != null && !username.isBlank() && !rateLimitService.isAllowed("download:user:" + username)) {
+                    throw new AfsException(ErrorCode.TOO_MANY_REQUESTS,
+                            "Rate limit exceeded for user. Please try again later.");
+                }
+                // Limit token validation attempts per IP to avoid brute force
+                String key = clientIp != null ? clientIp : "unknown";
+                if (!rateLimitService.isAllowed("token:validation:" + key)) {
+                    throw new AfsException(ErrorCode.TOO_MANY_REQUESTS,
+                            "Too many token validation attempts. Please try again later.");
+                }
+            }
+        } catch (AfsException e) {
+            // Re-throw to be handled by controller/exception handler
+            throw e;
+        } catch (Exception e) {
+            // If rate limiter fails for any reason, don't block download but log it
+            log.warn("Rate limiting check failed, allowing request to proceed: {}", e.getMessage());
+        }
+
+        // Delegate to existing validation logic
+        return validateAndGetFile(token);
     }
 
     /**

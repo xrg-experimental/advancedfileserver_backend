@@ -12,6 +12,7 @@ public enum ErrorCode {
     ACCESS_DENIED("ACCESS_DENIED", "Access denied", HttpStatus.FORBIDDEN),
     NOT_FOUND("NOT_FOUND", "Resource not found", HttpStatus.NOT_FOUND),
     ENDPOINT_NOT_FOUND("ENDPOINT_NOT_FOUND", "Endpoint not found", HttpStatus.NOT_FOUND),
+    TOO_MANY_REQUESTS("TOO_MANY_REQUESTS", "Too many requests", HttpStatus.TOO_MANY_REQUESTS),
     INTERNAL_ERROR("INTERNAL_ERROR", "Internal server error", HttpStatus.INTERNAL_SERVER_ERROR);
 
     public final String code;
