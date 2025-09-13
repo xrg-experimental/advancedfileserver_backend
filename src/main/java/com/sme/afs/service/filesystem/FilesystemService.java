@@ -38,7 +38,14 @@ public interface FilesystemService {
     /**
      * Check if a path exists
      * @param path Path to check
-     * @return true if the path exists, false otherwise
+     * Notes:
+     * <ul>
+     *   <li>Subject to TOCTOU: existence can change between check and use; callers must handle failures on use.</li>
+     *   <li>Per {@link java.nio.file.Files#exists(Path, java.nio.file.LinkOption...)},
+     *             I/O errors may cause this to return {@code false} indistinguishable from non-existence.</li>
+     *   <li>Symlink handling is implementation-defined; implementations should document whether links are followed.</li>
+     * </ul>
+     * @return true if the path exists at check time; false otherwise
      */
     boolean exists(Path path);
 }
