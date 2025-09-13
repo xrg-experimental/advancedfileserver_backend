@@ -1,5 +1,7 @@
 package com.sme.afs.dto;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -7,58 +9,39 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
-/**
- * Response DTO for blob URL operations.
- * Contains all information needed by clients to download files via temporary URLs.
- */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class BlobUrlResponse {
     
-    /**
-     * Full URL for downloading the file
-     */
+    @Schema(description = "Complete download URL for the file", 
+            example = "https://api.example.com/api/blob-urls/downloads/abc123def456")
     private String downloadUrl;
     
-    /**
-     * Token for status checking and identification
-     */
+    @Schema(description = "Unique token for this blob URL", 
+            example = "abc123def456")
     private String token;
     
-    /**
-     * Original filename for proper download handling
-     */
+    @Schema(description = "Original filename", 
+            example = "report.pdf")
     private String filename;
     
-    /**
-     * File size in bytes for progress tracking
-     */
+    @Schema(description = "File size in bytes", 
+            example = "1048576")
     private Long fileSize;
     
-    /**
-     * MIME type for proper content handling
-     */
+    @Schema(description = "MIME type of the file", 
+            example = "application/pdf")
     private String contentType;
     
-    /**
-     * When the URL expires
-     */
+    @Schema(description = "When the blob URL expires", 
+            example = "2024-01-15T14:30:00")
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime expiresAt;
     
-    /**
-     * Current status of the URL (active, expired, invalid)
-     */
+    @Schema(description = "Current status of the blob URL", 
+            example = "active", 
+            allowableValues = {"active", "expired", "invalid"})
     private String status;
-    
-    /**
-     * When the URL was created
-     */
-    private LocalDateTime createdAt;
-    
-    /**
-     * User who created the URL
-     */
-    private String createdBy;
 }

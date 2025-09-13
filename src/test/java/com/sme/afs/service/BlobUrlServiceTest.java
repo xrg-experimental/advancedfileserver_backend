@@ -188,7 +188,7 @@ class BlobUrlServiceTest {
         when(tokenService.isTokenExpired(blobUrl)).thenReturn(false);
         
         // Act
-        Optional<BlobUrl> result = blobUrlService.getBlobUrlStatus(token);
+        Optional<BlobUrl> result = blobUrlService.getBlobUrlStatusInternal(token);
         
         // Assert
         assertThat(result).isPresent();
@@ -203,7 +203,7 @@ class BlobUrlServiceTest {
         when(tokenService.validateTokenFormat(token)).thenReturn(false);
         
         // Act
-        Optional<BlobUrl> result = blobUrlService.getBlobUrlStatus(token);
+        Optional<BlobUrl> result = blobUrlService.getBlobUrlStatusInternal(token);
         
         // Assert
         assertThat(result).isEmpty();
@@ -219,7 +219,7 @@ class BlobUrlServiceTest {
         when(blobUrlRepository.findById(token)).thenReturn(Optional.empty());
         
         // Act
-        Optional<BlobUrl> result = blobUrlService.getBlobUrlStatus(token);
+        Optional<BlobUrl> result = blobUrlService.getBlobUrlStatusInternal(token);
         
         // Assert
         assertThat(result).isEmpty();
@@ -239,7 +239,7 @@ class BlobUrlServiceTest {
         when(tokenService.isTokenExpired(blobUrl)).thenReturn(true);
         
         // Act
-        Optional<BlobUrl> result = blobUrlService.getBlobUrlStatus(token);
+        Optional<BlobUrl> result = blobUrlService.getBlobUrlStatusInternal(token);
         
         // Assert
         assertThat(result).isEmpty();

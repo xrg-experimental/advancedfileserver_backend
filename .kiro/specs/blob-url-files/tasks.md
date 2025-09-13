@@ -28,7 +28,12 @@
   - **Deliverable**: Complete blob URL creation and validation system with secure tokens, fully tested
   - _Requirements: 1.1, 1.2, 1.3, 4.1, 4.2, 4.3, 5.1, 5.2, 5.3_
 
-- [ ] 3. Build REST API with DTOs and error handling
+- [x] 3. Build REST API with DTOs and error handling
+
+
+
+
+
   - Create BlobUrlResponse and request DTOs with proper validation annotations
   - Implement BlobUrlController with create, status, and download endpoints
   - Add comprehensive error handling with custom exceptions and global exception handler
