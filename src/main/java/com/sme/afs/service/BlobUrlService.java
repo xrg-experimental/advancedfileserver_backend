@@ -101,7 +101,14 @@ public class BlobUrlService {
         // Generate secure token and create the hard link path
         String token = tokenService.generateSecureToken();
         Path tempDir = Paths.get(blobUrlProperties.getTempDirectory());
+        // Token must be URL-safe and free of path separators
+        if (!token.matches("^[A-Za-z0-9_-]+$")) {
+            throw new AfsException(ErrorCode.INTERNAL_ERROR, "Invalid token format");
+        }
         Path hardLinkPath = tempDir.resolve(token);
+        if (hardLinkPath.isAbsolute()) {
+            throw new AfsException(ErrorCode.INTERNAL_ERROR, "Invalid token path segment");
+        }
 
         try {
             // Ensure temp directory exists (createDirectories is idempotent)
