@@ -115,6 +115,15 @@ public class BlobUrlService {
             Files.createDirectories(tempDir);
             log.debug("Ensured temporary directory exists: {}", tempDir);
 
+            // Ensure original and temp directories are on the same filesystem
+            try {
+                if (!Files.getFileStore(originalPath).equals(Files.getFileStore(tempDir))) {
+                    throw new CrossFilesystemException("Temporary directory must reside on the same filesystem as the original file");
+                }
+            } catch (IOException fsInfoEx) {
+                log.warn("Unable to determine filesystem equality; proceeding to attempt hard link");
+            }
+
             // Create the hard link
             hardLinkManager.createHardLink(originalPath, hardLinkPath);
 
