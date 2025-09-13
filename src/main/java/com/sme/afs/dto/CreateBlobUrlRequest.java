@@ -1,5 +1,6 @@
 package com.sme.afs.dto;
 
+import com.sme.afs.validation.SafePath;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
@@ -19,5 +20,6 @@ public class CreateBlobUrlRequest {
     @NotBlank(message = "File path is required")
     @Size(max = 1000, message = "File path must not exceed 1000 characters")
     @Pattern(regexp = "^[^\\r\\n\\x00]+$", message = "File path must not contain control characters")
+    @SafePath(message = "File path is unsafe or contains traversal sequences")
     private String filePath;
 }
