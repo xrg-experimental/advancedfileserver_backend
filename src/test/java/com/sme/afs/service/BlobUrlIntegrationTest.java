@@ -22,7 +22,6 @@ class BlobUrlIntegrationTest {
 
     private TokenService tokenService;
     private HardLinkManager hardLinkManager;
-    private BlobUrlProperties blobUrlProperties;
 
     @TempDir
     Path tempDir;
@@ -30,7 +29,7 @@ class BlobUrlIntegrationTest {
     @BeforeEach
     void setUp() {
         // Initialize properties
-        blobUrlProperties = new BlobUrlProperties();
+        BlobUrlProperties blobUrlProperties = new BlobUrlProperties();
         blobUrlProperties.setTempDirectory(tempDir.resolve("downloads").toString());
         blobUrlProperties.setDefaultExpiration(Duration.ofHours(1));
         blobUrlProperties.setTokenLength(32);
