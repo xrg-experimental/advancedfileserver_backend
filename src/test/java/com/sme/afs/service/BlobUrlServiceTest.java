@@ -58,7 +58,8 @@ class BlobUrlServiceTest {
 
     @BeforeEach
     void setUp() {
-        lenient().when(blobUrlProperties.getTempDirectory()).thenReturn(tempDir.toString());
+        // Use a relative temp directory to avoid BlobUrlService rejecting absolute hardLink paths
+        lenient().when(blobUrlProperties.getTempDirectory()).thenReturn("test-temp-blob-urls");
         lenient().when(blobUrlProperties.getDefaultExpiration()).thenReturn(Duration.ofHours(1));
         lenient().when(blobUrlProperties.getMaxConcurrentUrls()).thenReturn(1000L);
         
@@ -79,7 +80,9 @@ class BlobUrlServiceTest {
         fileInfo.setMimeType("text/plain");
         fileInfo.setDirectory(false);
         
-        Path originalFile = tempDir.resolve("original.txt");
+        Path originalRoot = Path.of("test-origin-files");
+        Files.createDirectories(originalRoot);
+        Path originalFile = originalRoot.resolve("original.txt");
         Files.write(originalFile, "test content".getBytes());
         
         Resource mockResource = new UrlResource(originalFile.toUri());
@@ -102,7 +105,7 @@ class BlobUrlServiceTest {
         assertThat(result.getCreatedBy()).isEqualTo(createdBy);
         assertThat(result.getExpiresAt()).isAfter(LocalDateTime.now());
         
-        verify(hardLinkManager).createHardLink(eq(originalFile), any(Path.class));
+        verify(hardLinkManager).createHardLink(eq(originalFile.toAbsolutePath()), any(Path.class));
         verify(blobUrlRepository).save(any(BlobUrl.class));
     }
 
@@ -156,25 +159,35 @@ class BlobUrlServiceTest {
         fileInfo.setMimeType("text/plain");
         fileInfo.setDirectory(false);
         
-        Path originalFile = tempDir.resolve("original.txt");
-        Files.write(originalFile, "test content".getBytes());
-        
-        Resource mockResource = new UrlResource(originalFile.toUri());
-        
-        when(fileService.getFileInfo(filePath)).thenReturn(fileInfo);
-        when(fileService.loadAsResource(filePath)).thenReturn(mockResource);
-        when(tokenService.generateSecureToken()).thenReturn(token);
-        when(blobUrlRepository.countActiveUrls(any(LocalDateTime.class))).thenReturn(0L);
-        doThrow(new IOException("Hard link creation failed")).when(hardLinkManager)
-                .createHardLink(any(Path.class), any(Path.class));
-        
-        // Act & Assert
-        assertThatThrownBy(() -> blobUrlService.createBlobUrl(filePath, createdBy))
-                .isInstanceOf(LinkCreationFailedException.class)
-                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.LINK_CREATION_FAILED)
-                .hasMessageContaining("Failed to create temporary download link");
-        
-        verify(blobUrlRepository).deleteById(token);
+        Path originalRoot = Path.of("test-origin-files");
+        Files.createDirectories(originalRoot);
+        Path originalFile = originalRoot.resolve("original.txt");
+        try {
+            Files.write(originalFile, "test content".getBytes());
+
+            Resource mockResource = new UrlResource(originalFile.toUri());
+
+            when(fileService.getFileInfo(filePath)).thenReturn(fileInfo);
+            when(fileService.loadAsResource(filePath)).thenReturn(mockResource);
+            when(tokenService.generateSecureToken()).thenReturn(token);
+            when(blobUrlRepository.countActiveUrls(any(LocalDateTime.class))).thenReturn(0L);
+            doThrow(new IOException("Hard link creation failed")).when(hardLinkManager)
+                    .createHardLink(any(Path.class), any(Path.class));
+
+            // Act & Assert
+            assertThatThrownBy(() -> blobUrlService.createBlobUrl(filePath, createdBy))
+                    .isInstanceOf(LinkCreationFailedException.class)
+                    .hasFieldOrPropertyWithValue("errorCode", ErrorCode.LINK_CREATION_FAILED)
+                    .hasMessageContaining("Failed to create temporary download link");
+
+            verify(blobUrlRepository).deleteById(token);
+        } finally {
+            try {
+                Files.deleteIfExists(originalFile);
+            } catch (IOException ignore) {
+                // ignore for tests
+            }
+        }
     }
 
     @Test
