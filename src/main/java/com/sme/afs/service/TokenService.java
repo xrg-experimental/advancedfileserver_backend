@@ -19,7 +19,7 @@ import java.util.Base64;
 public class TokenService {
 
     private final BlobUrlProperties blobUrlProperties;
-    private final SecureRandom secureRandom = new SecureRandom();
+    private static final SecureRandom secureRandom = new SecureRandom();
 
     /**
      * Generates a cryptographically secure random token for blob URLs.
