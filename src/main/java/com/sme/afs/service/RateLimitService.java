@@ -37,29 +37,34 @@ public class RateLimitService {
     private Bucket createNewBucket(String key) {
         Bandwidth limit;
         var rl = blobUrlProperties.getRateLimit();
+        if (rl == null) {
+            return Bucket.builder()
+                    .addLimit(Bandwidth.classic(20, Refill.intervally(20, Duration.ofMinutes(1))))
+                    .build();
+        }
 
         if (key.startsWith("download:ip:")) {
             limit = Bandwidth.classic(
-                    rl.getDownloadPerIp().getMaxRequests(),
+                    positiveOrDefault(rl.getDownloadPerIp().getMaxRequests(), 20),
                     Refill.intervally(
-                            rl.getDownloadPerIp().getMaxRequests(),
-                            Duration.ofMinutes(rl.getDownloadPerIp().getWindowMinutes())
+                            positiveOrDefault(rl.getDownloadPerIp().getMaxRequests(), 20),
+                            Duration.ofMinutes(positiveOrDefault(rl.getDownloadPerIp().getWindowMinutes(), 1))
                     )
             );
         } else if (key.startsWith("download:user:")) {
             limit = Bandwidth.classic(
-                    rl.getDownloadPerUser().getMaxRequests(),
+                    positiveOrDefault(rl.getDownloadPerUser().getMaxRequests(), 20),
                     Refill.intervally(
-                            rl.getDownloadPerUser().getMaxRequests(),
-                            Duration.ofMinutes(rl.getDownloadPerUser().getWindowMinutes())
+                            positiveOrDefault(rl.getDownloadPerUser().getMaxRequests(), 20),
+                            Duration.ofMinutes(positiveOrDefault(rl.getDownloadPerUser().getWindowMinutes(), 1))
                     )
             );
         } else if (key.startsWith("token:validation:")) {
             limit = Bandwidth.classic(
-                    rl.getTokenValidation().getMaxRequests(),
+                    positiveOrDefault(rl.getTokenValidation().getMaxRequests(), 20),
                     Refill.intervally(
-                            rl.getTokenValidation().getMaxRequests(),
-                            Duration.ofSeconds(rl.getTokenValidation().getWindowSeconds())
+                            positiveOrDefault(rl.getTokenValidation().getMaxRequests(), 20),
+                            Duration.ofSeconds(positiveOrDefault(rl.getTokenValidation().getWindowSeconds(), 60))
                     )
             );
         } else {
@@ -78,5 +83,9 @@ public class RateLimitService {
             cache.clear();
             log.info("Cleared rate limit cache");
         }
+    }
+
+    private int positiveOrDefault(int value, int def) {
+        return value > 0 ? value : def;
     }
 }
