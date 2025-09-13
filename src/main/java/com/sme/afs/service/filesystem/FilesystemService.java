@@ -34,7 +34,7 @@ public interface FilesystemService {
     /**
      * Check if a path exists
      * @param path Path to check
-     * @return true if path exists, false otherwise
+     * @return true if the path exists, false otherwise
      */
     boolean exists(Path path);
 }

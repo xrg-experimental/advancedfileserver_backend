@@ -61,6 +61,8 @@ public class SecurityConfig {
                         // Permit CORS preflight requests
                         .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/system/status").permitAll()
+                        // Allow unauthenticated access to blob URL downloads (security via token validation)
+                        .requestMatchers("/blob-urls/downloads/**").permitAll()
                         .requestMatchers("/api/files/**").authenticated()
                         .requestMatchers("/api/admin/**").hasAuthority("ROLE_ADMIN")
                         .requestMatchers("/api/internal/**").hasAuthority("ROLE_INTERNAL")
