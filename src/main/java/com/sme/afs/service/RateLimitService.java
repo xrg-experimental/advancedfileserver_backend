@@ -20,6 +20,10 @@ public class RateLimitService {
     private final BlobUrlProperties blobUrlProperties;
 
     public boolean isAllowed(String key) {
+        var rl = blobUrlProperties.getRateLimit();
+        if (rl == null || !rl.isEnabled()) {
+            return true;
+        }
         Bucket bucket = cache.computeIfAbsent(key, this::createNewBucket);
         boolean allowed = bucket.tryConsume(1);
 
