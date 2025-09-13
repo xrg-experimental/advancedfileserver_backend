@@ -50,7 +50,7 @@ public class BlobUrlService {
     public BlobUrl createBlobUrl(String filePath, String createdBy) {
         log.info("Creating blob URL for file: {} by user: {}", filePath, createdBy);
 
-        // Validate file exists and get metadata through FileService
+        // Validate file exists and gets metadata through FileService
         FileInfoResponse fileInfo = fileService.getFileInfo(filePath);
         if (fileInfo.isDirectory()) {
             throw new AfsException(ErrorCode.VALIDATION_FAILED, "Cannot create blob URL for directory");
@@ -62,7 +62,7 @@ public class BlobUrlService {
         // Get the actual file path from FileService
         Path originalPath = getOriginalFilePath(filePath);
         
-        // Generate secure token and create hard link path
+        // Generate secure token and create the hard link path
         String token = tokenService.generateSecureToken();
         Path tempDir = Paths.get(blobUrlProperties.getTempDirectory());
         Path hardLinkPath = tempDir.resolve(token);
@@ -74,7 +74,7 @@ public class BlobUrlService {
                 log.info("Created temporary directory: {}", tempDir);
             }
 
-            // Create hard link
+            // Create the hard link
             hardLinkManager.createHardLink(originalPath, hardLinkPath);
 
             // Create and save blob URL entity
@@ -183,7 +183,7 @@ public class BlobUrlService {
      * Cleans up expired blob URLs and their associated hard links.
      * This method is called by the cleanup scheduler.
      *
-     * @return Number of cleaned up URLs
+     * @return Number of cleaned-up URLs
      */
     @Transactional
     public int cleanupExpiredUrls() {
@@ -195,7 +195,7 @@ public class BlobUrlService {
         int cleanedCount = 0;
         for (BlobUrl expiredUrl : expiredUrls) {
             try {
-                // Delete hard link first
+                // Delete the hard link first
                 Path hardLinkPath = Paths.get(expiredUrl.getHardLinkPath());
                 if (Files.exists(hardLinkPath)) {
                     hardLinkManager.deleteHardLink(hardLinkPath);
@@ -256,7 +256,7 @@ public class BlobUrlService {
      * Validates concurrent URL limits to prevent system overload.
      */
     private void validateConcurrentLimits() {
-        long activeCount = getActiveUrlCount();
+        long activeCount = blobUrlRepository.countActiveUrls(LocalDateTime.now());
         if (activeCount >= blobUrlProperties.getMaxConcurrentUrls()) {
             throw new AfsException(ErrorCode.VALIDATION_FAILED, 
                 "Maximum concurrent blob URLs limit reached: " + blobUrlProperties.getMaxConcurrentUrls());
@@ -286,7 +286,7 @@ public class BlobUrlService {
             if (Files.exists(hardLinkPath)) {
                 hardLinkManager.deleteHardLink(hardLinkPath);
             }
-            // Also try to remove from database if it was saved
+            // Also try to remove from the database if it was saved
             blobUrlRepository.deleteById(token);
         } catch (Exception cleanupError) {
             log.warn("Failed to cleanup after blob URL creation failure", cleanupError);
