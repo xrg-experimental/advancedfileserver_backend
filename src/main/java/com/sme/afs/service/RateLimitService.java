@@ -25,6 +25,10 @@ public class RateLimitService {
     private final BlobUrlProperties blobUrlProperties;
 
     public boolean isAllowed(String key) {
+        if (key == null || key.isBlank()) {
+            log.warn("Rate limit called with empty key; allowing by default");
+            return true;
+        }
         var rl = blobUrlProperties.getRateLimit();
         if (rl == null || !rl.isEnabled()) {
             return true;
