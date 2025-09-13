@@ -91,6 +91,17 @@ afs:
     cleanup-on-startup: true
     download-url-path: /downloads
     token-length: 32
+    rate-limit:
+      enabled: true
+      download-per-ip:
+        max-requests: 50
+        window-minutes: 5
+      download-per-user:
+        max-requests: 100
+        window-minutes: 5
+      token-validation:
+        max-requests: 20
+        window-seconds: 60
 
 ---
 spring:
