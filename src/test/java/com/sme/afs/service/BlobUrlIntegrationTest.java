@@ -193,7 +193,7 @@ class BlobUrlIntegrationTest {
         hardLinkManager.createHardLink(sourceFile, targetFile);
         assertThat(Files.exists(targetFile)).isTrue();
         
-        // Test deletion of non-existent file (should not throw)
+        // Test deletion of a non-existent file (should not throw)
         Path nonExistent = tempDir.resolve("non-existent.txt");
         hardLinkManager.deleteHardLink(nonExistent); // Should not throw
         
