@@ -400,9 +400,14 @@ public class BlobUrlService {
      */
     private BlobUrlResponse convertToResponse(BlobUrl blobUrl) {
         String status = tokenService.isTokenExpired(blobUrl) ? "expired" : "active";
-        
+
+        String basePath = blobUrlProperties.getDownloadUrlPath();
+        if (!basePath.endsWith("/")) {
+            basePath = basePath + "/";
+        }
+        String encodedToken = java.net.URLEncoder.encode(blobUrl.getToken(), java.nio.charset.StandardCharsets.UTF_8);
         return BlobUrlResponse.builder()
-                .downloadUrl("/api/blob-urls/downloads/" + blobUrl.getToken())
+                .downloadUrl(basePath + encodedToken)
                 .token(blobUrl.getToken())
                 .filename(blobUrl.getFilename())
                 .fileSize(blobUrl.getFileSize())
