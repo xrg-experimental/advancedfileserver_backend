@@ -272,7 +272,7 @@ public class BlobUrlService {
             Resource resource = new UrlResource(hardLinkPath.toUri());
             if (!resource.exists() || !resource.isReadable()) {
                 log.error("Hard link file is not readable: {}", hardLinkPath);
-                throw new AfsException(ErrorCode.INTERNAL_ERROR, "Download file is not accessible");
+                throw new TokenInvalidException("Download file is no longer available");
             }
 
             log.info("Successfully validated token and prepared file for download: {}", token);
