@@ -249,7 +249,7 @@ class BlobUrlControllerTest {
     @Test
     void downloadFile_Success() throws Exception {
         // Arrange
-        Resource mockResource = new ByteArrayResource("test file content".getBytes());
+        Resource mockResource = new ByteArrayResource(new byte[1024]);
         when(blobUrlService.validateAndGetFile("test-token-123")).thenReturn(mockResource);
         when(blobUrlService.getBlobUrlStatus("test-token-123")).thenReturn(blobUrlResponse);
 
@@ -263,7 +263,7 @@ class BlobUrlControllerTest {
         assertThat(response.getContentType()).isEqualTo(MediaType.APPLICATION_PDF_VALUE);
         assertThat(response.getHeader("Content-Disposition")).isEqualTo("attachment; filename=\"test-file.pdf\"");
         assertThat(response.getHeader("Accept-Ranges")).isEqualTo("bytes");
-        assertThat(response.getHeader("Content-Length")).isEqualTo("1024");
+        assertThat(response.getHeaderValue("Content-Length")).isEqualTo(1024L);
 
         verify(blobUrlService).validateAndGetFile("test-token-123");
         verify(blobUrlService).getBlobUrlStatus("test-token-123");
