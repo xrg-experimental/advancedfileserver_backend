@@ -17,6 +17,9 @@ public interface FilesystemService {
 
     /**
      * Get metadata for a specific file or directory
+     * <p>
+     * Unreadable entries are filtered out and the returned list contains no nulls.
+     *
      * @param path Path to the file or directory
      * @return Metadata for the file or directory
      * @throws IOException if metadata cannot be retrieved
@@ -27,7 +30,8 @@ public interface FilesystemService {
      * Resolve a path, handling relative and absolute paths
      * @param basePath Base path for resolution
      * @param pathToResolve Path to resolve
-     * @return Resolved absolute path
+     * @return Resolved normalized path within {@code basePath}
+     * @throws IllegalArgumentException if resolution escapes {@code basePath}
      */
     Path resolvePath(Path basePath, String pathToResolve);
 
