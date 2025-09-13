@@ -28,6 +28,11 @@ public class SafePathValidator implements ConstraintValidator<SafePath, String> 
             return true;
         }
 
+        // Disallow NUL byte
+        if (trimmed.indexOf('\u0000') >= 0) {
+            return false;
+        }
+
         // Quick checks for Windows drive letters and UNC paths
         if (startsWithDriveLetter(trimmed)) {
             return false;
