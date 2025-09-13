@@ -4,6 +4,9 @@ import com.sme.afs.config.BlobUrlProperties;
 import com.sme.afs.dto.FileInfoResponse;
 import com.sme.afs.error.ErrorCode;
 import com.sme.afs.exception.AfsException;
+import com.sme.afs.exception.FileNotFoundException;
+import com.sme.afs.exception.LinkCreationFailedException;
+import com.sme.afs.exception.TokenInvalidException;
 import com.sme.afs.model.BlobUrl;
 import com.sme.afs.repository.BlobUrlRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -116,8 +119,8 @@ class BlobUrlServiceTest {
         
         // Act & Assert
         assertThatThrownBy(() -> blobUrlService.createBlobUrl(filePath, createdBy))
-                .isInstanceOf(AfsException.class)
-                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.VALIDATION_FAILED)
+                .isInstanceOf(FileNotFoundException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.FILE_NOT_FOUND)
                 .hasMessageContaining("Cannot create blob URL for directory");
     }
 
@@ -167,8 +170,8 @@ class BlobUrlServiceTest {
         
         // Act & Assert
         assertThatThrownBy(() -> blobUrlService.createBlobUrl(filePath, createdBy))
-                .isInstanceOf(AfsException.class)
-                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.INTERNAL_ERROR)
+                .isInstanceOf(LinkCreationFailedException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.LINK_CREATION_FAILED)
                 .hasMessageContaining("Failed to create temporary download link");
         
         verify(blobUrlRepository).deleteById(token);
@@ -280,9 +283,9 @@ class BlobUrlServiceTest {
         
         // Act & Assert
         assertThatThrownBy(() -> blobUrlService.validateAndGetFile(token))
-                .isInstanceOf(AfsException.class)
-                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.NOT_FOUND)
-                .hasMessageContaining("Download URL is invalid or expired");
+                .isInstanceOf(TokenInvalidException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.TOKEN_INVALID)
+                .hasMessageContaining("Token is invalid or expired");
     }
 
     @Test
@@ -303,8 +306,8 @@ class BlobUrlServiceTest {
         
         // Act & Assert
         assertThatThrownBy(() -> blobUrlService.validateAndGetFile(token))
-                .isInstanceOf(AfsException.class)
-                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.NOT_FOUND)
+                .isInstanceOf(TokenInvalidException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.TOKEN_INVALID)
                 .hasMessageContaining("Download file is no longer available");
     }
 
