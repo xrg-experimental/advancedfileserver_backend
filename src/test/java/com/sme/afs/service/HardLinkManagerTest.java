@@ -98,6 +98,7 @@ class HardLinkManagerTest {
         assertThatThrownBy(() -> hardLinkManager.createHardLink(sourceFile, targetFile))
                 .isInstanceOf(IOException.class)
                 .hasCauseInstanceOf(FileAlreadyExistsException.class);
+        assertThat(Files.readString(targetFile)).isEqualTo(oldTargetContent);
     }
 
     @Test
