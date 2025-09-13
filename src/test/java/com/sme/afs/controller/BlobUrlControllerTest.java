@@ -202,6 +202,8 @@ class BlobUrlControllerTest {
                 .andExpect(status().isNotFound())
                 .andExpect(content().contentType("application/problem+json"))
                 .andExpect(jsonPath("$.code").value("TOKEN_INVALID"));
+
+        verify(blobUrlService, never()).getBlobUrlStatus(anyString());
     }
 
     @Test
