@@ -19,6 +19,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -191,6 +192,7 @@ public class BlobUrlService {
         List<BlobUrl> expiredUrls = blobUrlRepository.findExpiredUrls(now);
 
         int cleanedCount = 0;
+        List<String> failedTokens = new ArrayList<>();
         for (BlobUrl expiredUrl : expiredUrls) {
             try {
                 // Delete the hard link first
@@ -207,12 +209,16 @@ public class BlobUrlService {
 
             } catch (Exception e) {
                 log.error("Failed to cleanup expired blob URL: {}", expiredUrl.getToken(), e);
+                failedTokens.add(expiredUrl.getToken());
                 // Continue with other URLs even if one fails
             }
         }
 
         if (cleanedCount > 0) {
             log.info("Cleaned up {} expired blob URLs", cleanedCount);
+        }
+        if (!failedTokens.isEmpty()) {
+            log.warn("Failed to cleanup {} blob URLs: {}", failedTokens.size(), failedTokens);
         }
 
         return cleanedCount;
