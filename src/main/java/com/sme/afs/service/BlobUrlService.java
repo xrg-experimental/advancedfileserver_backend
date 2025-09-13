@@ -276,9 +276,16 @@ public class BlobUrlService {
             // Use FileService to load the resource and get the actual file path
             Resource resource = fileService.loadAsResource(filePath);
             return Paths.get(resource.getURI());
-        } catch (Exception e) {
+        } catch (AfsException e) {
+            // Re-throw AfsException as-is
+            throw e;
+        } catch (IOException e) {
             log.error("Failed to resolve original file path for: {}", filePath, e);
-            throw new AfsException(ErrorCode.NOT_FOUND, "File not found or not accessible");
+            // Don't expose internal paths in the error message
+            throw new AfsException(ErrorCode.NOT_FOUND, "Requested file is not accessible");
+        } catch (Exception e) {
+            log.error("Unexpected error resolving file path", e);
+            throw new AfsException(ErrorCode.INTERNAL_ERROR, "Failed to process file request");
         }
     }
 
