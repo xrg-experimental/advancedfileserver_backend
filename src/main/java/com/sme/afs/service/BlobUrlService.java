@@ -68,11 +68,9 @@ public class BlobUrlService {
         Path hardLinkPath = tempDir.resolve(token);
 
         try {
-            // Ensure temp directory exists
-            if (!Files.exists(tempDir)) {
-                Files.createDirectories(tempDir);
-                log.info("Created temporary directory: {}", tempDir);
-            }
+            // Ensure temp directory exists (createDirectories is idempotent)
+            Files.createDirectories(tempDir);
+            log.debug("Ensured temporary directory exists: {}", tempDir);
 
             // Create the hard link
             hardLinkManager.createHardLink(originalPath, hardLinkPath);
