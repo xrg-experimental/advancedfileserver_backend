@@ -19,7 +19,8 @@ import java.util.Base64;
 public class TokenService {
 
     private final BlobUrlProperties blobUrlProperties;
-    private static final SecureRandom secureRandom = new SecureRandom();
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+    private static final Base64.Encoder URL_ENCODER = Base64.getUrlEncoder().withoutPadding();
 
     /**
      * Generates a cryptographically secure random token for blob URLs.
@@ -30,10 +31,10 @@ public class TokenService {
      */
     public String generateSecureToken() {
         byte[] tokenBytes = new byte[blobUrlProperties.getTokenLength()];
-        secureRandom.nextBytes(tokenBytes);
+        SECURE_RANDOM.nextBytes(tokenBytes);
         
         // Use URL-safe Base64 encoding (no padding) for clean URLs
-        String token = Base64.getUrlEncoder().withoutPadding().encodeToString(tokenBytes);
+        String token = URL_ENCODER.encodeToString(tokenBytes);
         
         log.debug("Generated secure token of length: {}", token.length());
         return token;
@@ -113,5 +114,22 @@ public class TokenService {
         }
         
         return true;
+    }
+
+    /**
+     * Validates the configuration for the `TokenService` during application initialization.
+     * Ensures the `tokenLength` property of `blobUrlProperties` is set to a minimum required value.
+     * <p>
+     * This method is annotated with `@PostConstruct` to be executed after the dependency injection
+     * is complete, but before the class is put into service.
+     *
+     * @throws IllegalStateException if the configured `blobUrl.tokenLength` is less than 16 bytes
+     */
+    @jakarta.annotation.PostConstruct
+    void validateConfig() {
+        int len = blobUrlProperties.getTokenLength();
+        if (len < 16) {
+            throw new IllegalStateException("blobUrl.tokenLength must be >= 16 bytes");
+        }
     }
 }
