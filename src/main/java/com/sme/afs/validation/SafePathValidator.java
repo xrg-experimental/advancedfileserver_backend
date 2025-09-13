@@ -36,8 +36,12 @@ public class SafePathValidator implements ConstraintValidator<SafePath, String> 
             return false;
         }
 
-        // Normalize separators
-        String path = trimmed.replace('\\', '/');
+        // Normalize separators (include common Unicode slash lookalikes)
+        //noinspection UnnecessaryUnicodeEscape
+        String path = trimmed
+                .replace('\\', '/')
+                .replace('\u2215', '/')  // division slash
+                .replace('\u2044', '/'); // fraction slash
 
         // Reject absolute paths (leading '/')
         if (path.startsWith("/")) {
