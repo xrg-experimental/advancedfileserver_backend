@@ -18,7 +18,7 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
  * The validator performs platform-neutral checks by normalizing separators,
  * resolving '.' and '..' segments, and rejecting absolute or escaping paths.
  */
-@Target({ FIELD, METHOD, PARAMETER, ANNOTATION_TYPE })
+@Target({ FIELD, METHOD, PARAMETER, ANNOTATION_TYPE, java.lang.annotation.ElementType.TYPE_USE })
 @Retention(RUNTIME)
 @Documented
 @Constraint(validatedBy = SafePathValidator.class)
