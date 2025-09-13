@@ -173,6 +173,7 @@ class BlobUrlControllerTest {
         assertThat(response.getContentType()).isEqualTo(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
         Map<String, Object> problem = objectMapper.readValue(response.getContentAsString(), new TypeReference<>() {});
         assertThat(problem.get("code")).isEqualTo("VALIDATION_FAILED");
+        verifyNoInteractions(blobUrlService);
     }
 
     @Test
