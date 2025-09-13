@@ -9,6 +9,7 @@ import com.sme.afs.model.User;
 import com.sme.afs.repository.GroupRepository;
 import com.sme.afs.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -40,12 +41,17 @@ public class UserService {
     @Transactional
     public UserDTO createUser(CreateUserRequest request) {
         // Check if username already exists
-        if (userRepository.findByUsername(request.getUsername()).isPresent()) {
-            throw new AfsException(ErrorCode.VALIDATION_FAILED, "Username already exists");
+        String rawUsername = request.getUsername();
+        if (!org.springframework.util.StringUtils.hasText(rawUsername)) {
+            throw new AfsException(ErrorCode.VALIDATION_FAILED, "Username must not be blank");
+        }
+        String username = rawUsername.strip();
+        if (userRepository.existsByUsername(username)) {
+            throw new AfsException(ErrorCode.CONFLICT, "Username already exists");
         }
 
         User user = new User();
-        user.setUsername(request.getUsername());
+        user.setUsername(username);
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setEmail(request.getEmail());
         user.setUserType(request.getUserType());
@@ -66,14 +72,22 @@ public class UserService {
             user.setGroups(groups);
         }
 
-        User savedUser = userRepository.save(user);
+        User savedUser;
+        try {
+            savedUser = userRepository.save(user);
+        } catch (DataIntegrityViolationException e) {
+            if (isUniqueUsernameViolation(e)) {
+                throw new AfsException(ErrorCode.CONFLICT, "Username already exists");
+            }
+            throw e;
+        }
         return UserDTO.fromUser(savedUser);
     }
 
     @Transactional
     public UserDTO updateUserStatus(String username, boolean enabled) {
         User user = userRepository.findByUsername(username)
-            .orElseThrow(() -> new AfsException(ErrorCode.NOT_FOUND, 
+            .orElseThrow(() -> new AfsException(ErrorCode.NOT_FOUND,
                 String.format("User not found: %s", username)));
 
         // Don't allow disabling admin users
@@ -83,7 +97,7 @@ public class UserService {
         }
 
         user.setEnabled(enabled);
-        
+
         // If disabling user, invalidate all their active sessions
         if (!enabled) {
             sessionService.invalidateUserSessions(username);
@@ -121,19 +135,19 @@ public class UserService {
                     }
                 })
                 .collect(Collectors.toSet());
-            
+
             user.setRoles(validRoles);
         }
 
         // Update groups if provided
         if (request.getGroups() != null && !request.getGroups().isEmpty()) {
             Set<Group> groups = groupRepository.findAllByNameIn(request.getGroups());
-            
+
             // Validate all requested groups exist
             if (groups.size() != request.getGroups().size()) {
                 throw new AfsException(ErrorCode.VALIDATION_FAILED, "One or more groups do not exist");
             }
-            
+
             user.setGroups(groups);
         }
 
@@ -150,7 +164,7 @@ public class UserService {
     public ProfileDTO getCurrentUserProfile(String username) {
         User user = userRepository.findByUsername(username)
             .orElseThrow(() -> new AfsException(ErrorCode.NOT_FOUND, "User not found"));
-        
+
         ProfileDTO profile = new ProfileDTO();
         profile.setUsername(user.getUsername());
         profile.setEmail(user.getEmail());
@@ -179,11 +193,23 @@ public class UserService {
         }
 
         User updatedUser = userRepository.save(user);
-        
+
         ProfileDTO profile = new ProfileDTO();
         profile.setUsername(updatedUser.getUsername());
         profile.setEmail(updatedUser.getEmail());
         profile.setDisplayName(updatedUser.getDisplayName());
         return profile;
+    }
+
+    private static boolean isUniqueUsernameViolation(org.springframework.dao.DataIntegrityViolationException e) {
+        Throwable t = e.getCause();
+        while (t != null) {
+            if (t instanceof org.hibernate.exception.ConstraintViolationException) {
+                String name = ((org.hibernate.exception.ConstraintViolationException) t).getConstraintName();
+                return name != null && name.toLowerCase(java.util.Locale.ROOT).contains("username");
+            }
+            t = t.getCause();
+        }
+        return false;
     }
 }

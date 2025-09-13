@@ -8,6 +8,7 @@ public enum ErrorCode {
     SESSION_INVALID("SESSION_INVALID", "Invalid session", HttpStatus.UNAUTHORIZED),
     SESSION_NOT_FOUND("SESSION_NOT_FOUND", "Session not found", HttpStatus.NOT_FOUND),
     VALIDATION_FAILED("VALIDATION_FAILED", "Validation failed", HttpStatus.BAD_REQUEST),
+    CONFLICT("CONFLICT", "Conflict", HttpStatus.CONFLICT),
     ACCESS_DENIED("ACCESS_DENIED", "Access denied", HttpStatus.FORBIDDEN),
     NOT_FOUND("NOT_FOUND", "Resource not found", HttpStatus.NOT_FOUND),
     ENDPOINT_NOT_FOUND("ENDPOINT_NOT_FOUND", "Endpoint not found", HttpStatus.NOT_FOUND),
