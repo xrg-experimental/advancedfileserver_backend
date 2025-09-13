@@ -9,14 +9,19 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
-import java.util.concurrent.ConcurrentHashMap;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class RateLimitService {
 
-    private final ConcurrentHashMap<String, Bucket> cache = new ConcurrentHashMap<>();
+    private final Cache<String, Bucket> cache = CacheBuilder.newBuilder()
+            .maximumSize(10_000)
+            .expireAfterAccess(Duration.ofMinutes(30))
+            .expireAfterWrite(Duration.ofHours(1))
+            .build();
     private final BlobUrlProperties blobUrlProperties;
 
     public boolean isAllowed(String key) {
@@ -24,7 +29,14 @@ public class RateLimitService {
         if (rl == null || !rl.isEnabled()) {
             return true;
         }
-        Bucket bucket = cache.computeIfAbsent(key, this::createNewBucket);
+        Bucket bucket;
+        try {
+            bucket = cache.get(key, () -> createNewBucket(key));
+        } catch (Exception e) {
+            log.error("Failed to get rate limit bucket from cache for key: {}", key, e);
+            bucket = createNewBucket(key);
+            cache.put(key, bucket);
+        }
         boolean allowed = bucket.tryConsume(1);
 
         if (!allowed) {
@@ -75,14 +87,6 @@ public class RateLimitService {
         return Bucket.builder()
                 .addLimit(limit)
                 .build();
-    }
-
-    public void clearExpiredEntries() {
-        // Clean up old entries periodically
-        if (cache.size() > 10000) {
-            cache.clear();
-            log.info("Cleared rate limit cache");
-        }
     }
 
     private int positiveOrDefault(int value, int def) {

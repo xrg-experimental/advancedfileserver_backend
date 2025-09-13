@@ -114,6 +114,12 @@
             <!-- This is not only used in test but also in demo mode -->
             <!-- should be tagged as test when ready for production -->
         </dependency>
+        <!-- https://mvnrepository.com/artifact/com.google.guava/guava -->
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>33.4.8-jre</version>
+        </dependency>
 
         <!-- Testing -->
         <dependency>
