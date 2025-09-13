@@ -108,7 +108,7 @@ class BlobUrlControllerTest {
         // Assert
         var response = result.getResponse();
         assertThat(response.getStatus()).isEqualTo(404);
-        assertThat(response.getContentType()).isEqualTo("application/problem+json");
+        assertThat(response.getContentType()).isEqualTo(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
         Map<String, Object> problem = objectMapper.readValue(response.getContentAsString(), new TypeReference<>() {});
         assertThat(problem.get("code")).isEqualTo("FILE_NOT_FOUND");
     }
@@ -129,7 +129,7 @@ class BlobUrlControllerTest {
         // Assert
         var response = result.getResponse();
         assertThat(response.getStatus()).isEqualTo(400);
-        assertThat(response.getContentType()).isEqualTo("application/problem+json");
+        assertThat(response.getContentType()).isEqualTo(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
         Map<String, Object> problem = objectMapper.readValue(response.getContentAsString(), new TypeReference<>() {});
         assertThat(problem.get("code")).isEqualTo("CROSS_FILESYSTEM");
     }
@@ -150,7 +150,7 @@ class BlobUrlControllerTest {
         // Assert
         var response = result.getResponse();
         assertThat(response.getStatus()).isEqualTo(500);
-        assertThat(response.getContentType()).isEqualTo("application/problem+json");
+        assertThat(response.getContentType()).isEqualTo(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
         Map<String, Object> problem = objectMapper.readValue(response.getContentAsString(), new TypeReference<>() {});
         assertThat(problem.get("code")).isEqualTo("LINK_CREATION_FAILED");
     }
@@ -170,7 +170,7 @@ class BlobUrlControllerTest {
         // Assert
         var response = result.getResponse();
         assertThat(response.getStatus()).isEqualTo(400);
-        assertThat(response.getContentType()).isEqualTo("application/problem+json");
+        assertThat(response.getContentType()).isEqualTo(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
         Map<String, Object> problem = objectMapper.readValue(response.getContentAsString(), new TypeReference<>() {});
         assertThat(problem.get("code")).isEqualTo("VALIDATION_FAILED");
     }
@@ -227,7 +227,7 @@ class BlobUrlControllerTest {
         // Assert
         var response = result.getResponse();
         assertThat(response.getStatus()).isEqualTo(404);
-        assertThat(response.getContentType()).isEqualTo("application/problem+json");
+        assertThat(response.getContentType()).isEqualTo(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
         Map<String, Object> problem = objectMapper.readValue(response.getContentAsString(), new TypeReference<>() {});
         assertThat(problem.get("code")).isEqualTo("TOKEN_INVALID");
     }
@@ -259,7 +259,7 @@ class BlobUrlControllerTest {
         // Assert
         var response = result.getResponse();
         assertThat(response.getStatus()).isEqualTo(200);
-        assertThat(response.getContentType()).isEqualTo("application/pdf");
+        assertThat(response.getContentType()).isEqualTo(MediaType.APPLICATION_PDF_VALUE);
         assertThat(response.getHeader("Content-Disposition")).isEqualTo("attachment; filename=\"test-file.pdf\"");
         assertThat(response.getHeader("Accept-Ranges")).isEqualTo("bytes");
         assertThat(response.getHeader("Content-Length")).isEqualTo("1024");
@@ -281,7 +281,7 @@ class BlobUrlControllerTest {
         // Assert
         var response = result.getResponse();
         assertThat(response.getStatus()).isEqualTo(404);
-        assertThat(response.getContentType()).isEqualTo("application/problem+json");
+        assertThat(response.getContentType()).isEqualTo(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
         Map<String, Object> problem = objectMapper.readValue(response.getContentAsString(), new TypeReference<>() {});
         assertThat(problem.get("code")).isEqualTo("TOKEN_INVALID");
 
@@ -343,6 +343,6 @@ class BlobUrlControllerTest {
 
         // Assert
         assertThat(result.getResponse().getStatus()).isEqualTo(200);
-        assertThat(result.getResponse().getContentType()).isEqualTo("application/pdf");
+        assertThat(result.getResponse().getContentType()).isEqualTo(MediaType.APPLICATION_PDF_VALUE);
     }
 }

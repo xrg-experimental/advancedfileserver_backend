@@ -11,7 +11,10 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.slf4j.MDC;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+
+import java.util.Objects;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -39,7 +42,7 @@ class GlobalExceptionHandlerTest {
 
         // Then
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
-        assertThat(response.getHeaders().getContentType().toString()).contains("application/problem+json");
+        assertThat(Objects.requireNonNull(response.getHeaders().getContentType()).toString()).contains(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
 
         ProblemResponse body = response.getBody();
         assertThat(body).isNotNull();
