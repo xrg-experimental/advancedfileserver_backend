@@ -56,27 +56,45 @@ public class RateLimitService {
         }
 
         if (key.startsWith("download:ip:")) {
+            var ipCfg = rl.getDownloadPerIp();
+            if (ipCfg == null) {
+                return Bucket.builder()
+                        .addLimit(Bandwidth.classic(20, Refill.intervally(20, Duration.ofMinutes(1))))
+                        .build();
+            }
             limit = Bandwidth.classic(
-                    positiveOrDefault(rl.getDownloadPerIp().getMaxRequests(), 20),
+                    positiveOrDefault(ipCfg.getMaxRequests(), 20),
                     Refill.intervally(
-                            positiveOrDefault(rl.getDownloadPerIp().getMaxRequests(), 20),
-                            Duration.ofMinutes(positiveOrDefault(rl.getDownloadPerIp().getWindowMinutes(), 1))
+                            positiveOrDefault(ipCfg.getMaxRequests(), 20),
+                            Duration.ofMinutes(positiveOrDefault(ipCfg.getWindowMinutes(), 1))
                     )
             );
         } else if (key.startsWith("download:user:")) {
+            var userCfg = rl.getDownloadPerUser();
+            if (userCfg == null) {
+                return Bucket.builder()
+                        .addLimit(Bandwidth.classic(20, Refill.intervally(20, Duration.ofMinutes(1))))
+                        .build();
+            }
             limit = Bandwidth.classic(
-                    positiveOrDefault(rl.getDownloadPerUser().getMaxRequests(), 20),
+                    positiveOrDefault(userCfg.getMaxRequests(), 20),
                     Refill.intervally(
-                            positiveOrDefault(rl.getDownloadPerUser().getMaxRequests(), 20),
-                            Duration.ofMinutes(positiveOrDefault(rl.getDownloadPerUser().getWindowMinutes(), 1))
+                            positiveOrDefault(userCfg.getMaxRequests(), 20),
+                            Duration.ofMinutes(positiveOrDefault(userCfg.getWindowMinutes(), 1))
                     )
             );
         } else if (key.startsWith("token:validation:")) {
+            var tv = rl.getTokenValidation();
+            if (tv == null) {
+                return Bucket.builder()
+                        .addLimit(Bandwidth.classic(20, Refill.intervally(20, Duration.ofMinutes(1))))
+                        .build();
+            }
             limit = Bandwidth.classic(
-                    positiveOrDefault(rl.getTokenValidation().getMaxRequests(), 20),
+                    positiveOrDefault(tv.getMaxRequests(), 20),
                     Refill.intervally(
-                            positiveOrDefault(rl.getTokenValidation().getMaxRequests(), 20),
-                            Duration.ofSeconds(positiveOrDefault(rl.getTokenValidation().getWindowSeconds(), 60))
+                            positiveOrDefault(tv.getMaxRequests(), 20),
+                            Duration.ofSeconds(positiveOrDefault(tv.getWindowSeconds(), 60))
                     )
             );
         } else {
