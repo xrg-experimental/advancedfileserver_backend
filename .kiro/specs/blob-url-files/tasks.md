@@ -14,7 +14,12 @@
   - **Deliverable**: Working hard link creation/deletion with database persistence, fully tested
   - _Requirements: 1.1, 1.2, 2.1, 4.1, 6.1, 6.2, 6.4_
 
-- [ ] 2. Implement secure token service and blob URL core logic
+- [x] 2. Implement secure token service and blob URL core logic
+
+
+
+
+
   - Create TokenService with cryptographically secure token generation and validation
   - Implement BlobUrlService with createBlobUrl, getBlobUrlStatus, and validateAndGetFile methods
   - Create BlobUrlRepository with custom queries for expired URL cleanup
