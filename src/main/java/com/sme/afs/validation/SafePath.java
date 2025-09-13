@@ -7,10 +7,7 @@ import java.lang.annotation.Documented;
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
 
-import static java.lang.annotation.ElementType.ANNOTATION_TYPE;
-import static java.lang.annotation.ElementType.FIELD;
-import static java.lang.annotation.ElementType.METHOD;
-import static java.lang.annotation.ElementType.PARAMETER;
+import static java.lang.annotation.ElementType.*;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
 /**
@@ -18,7 +15,7 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
  * The validator performs platform-neutral checks by normalizing separators,
  * resolving '.' and '..' segments, and rejecting absolute or escaping paths.
  */
-@Target({ FIELD, METHOD, PARAMETER, ANNOTATION_TYPE, java.lang.annotation.ElementType.TYPE_USE })
+@Target({ FIELD, METHOD, PARAMETER, ANNOTATION_TYPE, TYPE_USE })
 @Retention(RUNTIME)
 @Documented
 @Constraint(validatedBy = SafePathValidator.class)
