@@ -13,6 +13,14 @@ public enum ErrorCode {
     NOT_FOUND("NOT_FOUND", "Resource not found", HttpStatus.NOT_FOUND),
     ENDPOINT_NOT_FOUND("ENDPOINT_NOT_FOUND", "Endpoint not found", HttpStatus.NOT_FOUND),
     TOO_MANY_REQUESTS("TOO_MANY_REQUESTS", "Too many requests", HttpStatus.TOO_MANY_REQUESTS),
+    
+    // Blob URL specific errors
+    FILE_NOT_FOUND("FILE_NOT_FOUND", "File not found or not accessible", HttpStatus.NOT_FOUND),
+    FILESYSTEM_UNSUPPORTED("FILESYSTEM_UNSUPPORTED", "Hard links not supported on this filesystem", HttpStatus.INTERNAL_SERVER_ERROR),
+    CROSS_FILESYSTEM("CROSS_FILESYSTEM", "Cannot create hard link across filesystems", HttpStatus.BAD_REQUEST),
+    TOKEN_INVALID("TOKEN_INVALID", "Download URL is invalid or expired", HttpStatus.NOT_FOUND),
+    LINK_CREATION_FAILED("LINK_CREATION_FAILED", "Failed to create temporary download link", HttpStatus.INTERNAL_SERVER_ERROR),
+    
     INTERNAL_ERROR("INTERNAL_ERROR", "Internal server error", HttpStatus.INTERNAL_SERVER_ERROR);
 
     public final String code;
