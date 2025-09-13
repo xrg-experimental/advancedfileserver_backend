@@ -45,7 +45,8 @@ public class BlobUrlController {
     @PreAuthorize("hasRole('USER')")
     public ResponseEntity<BlobUrlResponse> createBlobUrl(
             @Valid @RequestBody BlobUrlCreateRequest request) {
-        log.debug("Creating blob URL for file: {}", request.getFilePath());
+        String safePath = request.getFilePath() == null ? "" : request.getFilePath().replaceAll("[\\r\\n]", "");
+        log.debug("Creating blob URL for file: {}", safePath);
         BlobUrlResponse response = blobUrlService.createBlobUrl(request.getFilePath());
         return ResponseEntity.ok(response);
     }
