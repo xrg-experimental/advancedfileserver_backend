@@ -8,8 +8,6 @@ import com.sme.afs.exception.*;
 import com.sme.afs.service.BlobUrlService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -28,6 +26,7 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 
 @SpringBootTest
@@ -45,12 +44,14 @@ class BlobUrlControllerTest {
     private ObjectMapper objectMapper;
 
     private BlobUrlCreateRequest createRequest;
+    private BlobUrlCreateRequest invalidRequest;
     private BlobUrlResponse blobUrlResponse;
 
     @BeforeEach
     void setUp() {
         // Arrange
         createRequest = new BlobUrlCreateRequest("/shared/test-file.pdf");
+        invalidRequest = new BlobUrlCreateRequest("/shared/nonexistent.pdf");
 
         blobUrlResponse = BlobUrlResponse.builder()
                 .downloadUrl("/api/blob-urls/downloads/test-token-123")
@@ -70,7 +71,7 @@ class BlobUrlControllerTest {
         when(blobUrlService.createBlobUrl(anyString())).thenReturn(blobUrlResponse);
 
         // Act
-        MvcResult result = mockMvc.perform(post("/blob-urls/create")
+        MvcResult result = mockMvc.perform(post("/blob-urls/create").with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(createRequest)))
                 .andReturn();
@@ -99,9 +100,9 @@ class BlobUrlControllerTest {
                 .thenThrow(new FileNotFoundException("/shared/nonexistent.pdf"));
 
         // Act
-        MvcResult result = mockMvc.perform(post("/blob-urls/create")
+        MvcResult result = mockMvc.perform(post("/blob-urls/create").with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(createRequest)))
+                        .content(objectMapper.writeValueAsString(invalidRequest)))
                 .andReturn();
 
         // Assert
@@ -120,9 +121,9 @@ class BlobUrlControllerTest {
                 .thenThrow(new CrossFilesystemException("Cannot create hard link across filesystems"));
 
         // Act
-        MvcResult result = mockMvc.perform(post("/blob-urls/create")
+        MvcResult result = mockMvc.perform(post("/blob-urls/create").with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(createRequest)))
+                        .content(objectMapper.writeValueAsString(invalidRequest)))
                 .andReturn();
 
         // Assert
@@ -141,7 +142,7 @@ class BlobUrlControllerTest {
                 .thenThrow(new LinkCreationFailedException("Failed to create hard link"));
 
         // Act
-        MvcResult result = mockMvc.perform(post("/blob-urls/create")
+        MvcResult result = mockMvc.perform(post("/blob-urls/create").with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(createRequest)))
                 .andReturn();
@@ -161,7 +162,7 @@ class BlobUrlControllerTest {
         BlobUrlCreateRequest invalidRequest = new BlobUrlCreateRequest("");
 
         // Act
-        MvcResult result = mockMvc.perform(post("/blob-urls/create")
+        MvcResult result = mockMvc.perform(post("/blob-urls/create").with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(invalidRequest)))
                 .andReturn();
@@ -180,7 +181,7 @@ class BlobUrlControllerTest {
         // (no stubbing required)
 
         // Act
-        MvcResult result = mockMvc.perform(post("/blob-urls/create")
+        MvcResult result = mockMvc.perform(post("/blob-urls/create").with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(createRequest)))
                 .andReturn();
