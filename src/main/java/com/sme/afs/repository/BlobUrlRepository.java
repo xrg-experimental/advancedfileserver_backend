@@ -7,7 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -24,7 +24,7 @@ public interface BlobUrlRepository extends JpaRepository<BlobUrl, String> {
      * @return Total number of active blob URLs
      */
     @Query("SELECT COUNT(b) FROM BlobUrl b WHERE b.expiresAt > :currentTime")
-    long countActiveUrls(@Param("currentTime") LocalDateTime currentTime);
+    long countActiveUrls(@Param("currentTime") OffsetDateTime currentTime);
 
     /**
      * Count the number of active blob URLs for a specific user.
@@ -35,7 +35,7 @@ public interface BlobUrlRepository extends JpaRepository<BlobUrl, String> {
      */
     @Query("SELECT COUNT(b) FROM BlobUrl b WHERE b.createdBy = :createdBy AND b.expiresAt > :currentTime")
     long countActiveUrlsByUser(@Param("createdBy") String createdBy,
-                               @Param("currentTime") LocalDateTime currentTime);
+                               @Param("currentTime") OffsetDateTime currentTime);
 
     /**
      * Delete all expired blob URLs.
@@ -46,7 +46,7 @@ public interface BlobUrlRepository extends JpaRepository<BlobUrl, String> {
      */
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("DELETE FROM BlobUrl b WHERE b.expiresAt <= :currentTime")
-    int deleteExpiredUrls(@Param("currentTime") LocalDateTime currentTime);
+    int deleteExpiredUrls(@Param("currentTime") OffsetDateTime currentTime);
 
     /**
      * Find a blob URL by token if it's still active.
@@ -57,7 +57,7 @@ public interface BlobUrlRepository extends JpaRepository<BlobUrl, String> {
      */
     @Query("SELECT b FROM BlobUrl b WHERE b.token = :token AND b.expiresAt > :currentTime")
     Optional<BlobUrl> findActiveByToken(@Param("token") String token,
-                                        @Param("currentTime") LocalDateTime currentTime);
+                                        @Param("currentTime") OffsetDateTime currentTime);
 
     /**
      * Find blob URLs by original file path.
@@ -69,7 +69,7 @@ public interface BlobUrlRepository extends JpaRepository<BlobUrl, String> {
      */
     @Query("SELECT b FROM BlobUrl b WHERE b.originalPath = :originalPath AND b.expiresAt > :currentTime")
     List<BlobUrl> findActiveUrlsByOriginalPath(@Param("originalPath") String originalPath,
-                                               @Param("currentTime") LocalDateTime currentTime);
+                                               @Param("currentTime") OffsetDateTime currentTime);
 
     /**
      * Find all blob URLs created by a specific user that are still active.
@@ -80,7 +80,7 @@ public interface BlobUrlRepository extends JpaRepository<BlobUrl, String> {
      */
     @Query("SELECT b FROM BlobUrl b WHERE b.createdBy = :createdBy AND b.expiresAt > :currentTime")
     List<BlobUrl> findActiveUrlsByUser(@Param("createdBy") String createdBy,
-                                       @Param("currentTime") LocalDateTime currentTime);
+                                       @Param("currentTime") OffsetDateTime currentTime);
 
     /**
      * Find all blob URLs created by a specific user.
@@ -97,7 +97,7 @@ public interface BlobUrlRepository extends JpaRepository<BlobUrl, String> {
      * @return List of expired blob URLs
      */
     @Query("SELECT b FROM BlobUrl b WHERE b.expiresAt <= :currentTime")
-    List<BlobUrl> findExpiredUrls(@Param("currentTime") LocalDateTime currentTime);
+    List<BlobUrl> findExpiredUrls(@Param("currentTime") OffsetDateTime currentTime);
 
     /**
      * Find blob URLs that are about to expire within the specified time window.
@@ -108,6 +108,6 @@ public interface BlobUrlRepository extends JpaRepository<BlobUrl, String> {
      * @return List of blob URLs expiring soon
      */
     @Query("SELECT b FROM BlobUrl b WHERE b.expiresAt > :currentTime AND b.expiresAt <= :expirationWindow")
-    List<BlobUrl> findUrlsExpiringWithin(@Param("currentTime") LocalDateTime currentTime,
-                                         @Param("expirationWindow") LocalDateTime expirationWindow);
+    List<BlobUrl> findUrlsExpiringWithin(@Param("currentTime") OffsetDateTime currentTime,
+                                         @Param("expirationWindow") OffsetDateTime expirationWindow);
 }

@@ -11,6 +11,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -143,8 +144,8 @@ class BlobUrlIntegrationTest {
                 .filename("file.txt")
                 .contentType("text/plain")
                 .fileSize(1024L)
-                .createdAt(LocalDateTime.now())
-                .expiresAt(LocalDateTime.now().plusHours(1))
+                .createdAt(OffsetDateTime.now())
+                .expiresAt(OffsetDateTime.now().plusHours(1))
                 .createdBy("testuser")
                 .build();
         
@@ -153,7 +154,7 @@ class BlobUrlIntegrationTest {
         
         // Test expiration
         BlobUrl expiredBlobUrl = BlobUrl.builder()
-                .expiresAt(LocalDateTime.now().minusHours(1))
+                .expiresAt(OffsetDateTime.now().minusHours(1))
                 .build();
         
         assertThat(expiredBlobUrl.isExpired()).isTrue();
@@ -163,12 +164,12 @@ class BlobUrlIntegrationTest {
     void tokenService_ShouldHandleExpirationChecks() {
         BlobUrl activeBlobUrl = BlobUrl.builder()
                 .token("active-token")
-                .expiresAt(LocalDateTime.now().plusHours(1))
+                .expiresAt(OffsetDateTime.now().plusHours(1))
                 .build();
         
         BlobUrl expiredBlobUrl = BlobUrl.builder()
                 .token("expired-token")
-                .expiresAt(LocalDateTime.now().minusHours(1))
+                .expiresAt(OffsetDateTime.now().minusHours(1))
                 .build();
         
         assertThat(tokenService.isTokenExpired(activeBlobUrl)).isFalse();

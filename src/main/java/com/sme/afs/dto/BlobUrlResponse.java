@@ -7,7 +7,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 @Data
 @Builder
@@ -34,11 +34,11 @@ public class BlobUrlResponse {
     @Schema(description = "MIME type of the file", 
             example = "application/pdf")
     private String contentType;
-    
-    @Schema(description = "When the blob URL expires", 
-            example = "2024-01-15T14:30:00")
-    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
-    private LocalDateTime expiresAt;
+
+    @Schema(description = "When the blob URL expires",
+            example = "2024-01-15T14:30:00Z")
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
+    private OffsetDateTime expiresAt;
     
     @Schema(description = "Current status of the blob URL", 
             example = "active", 

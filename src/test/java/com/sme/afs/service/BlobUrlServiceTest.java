@@ -22,7 +22,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -90,7 +90,7 @@ class BlobUrlServiceTest {
         when(fileService.getFileInfo(filePath)).thenReturn(fileInfo);
         when(fileService.loadAsResource(filePath)).thenReturn(mockResource);
         when(tokenService.generateSecureToken()).thenReturn(token);
-        when(blobUrlRepository.countActiveUrls(any(LocalDateTime.class))).thenReturn(0L);
+        when(blobUrlRepository.countActiveUrls(any(OffsetDateTime.class))).thenReturn(0L);
         when(blobUrlRepository.save(any(BlobUrl.class))).thenAnswer(invocation -> invocation.getArgument(0));
         
         // Act
@@ -103,7 +103,7 @@ class BlobUrlServiceTest {
         assertThat(result.getContentType()).isEqualTo("text/plain");
         assertThat(result.getFileSize()).isEqualTo(1024L);
         assertThat(result.getCreatedBy()).isEqualTo(createdBy);
-        assertThat(result.getExpiresAt()).isAfter(LocalDateTime.now());
+        assertThat(result.getExpiresAt()).isAfter(OffsetDateTime.now());
         
         verify(hardLinkManager).createHardLink(eq(originalFile.toAbsolutePath()), any(Path.class));
         verify(blobUrlRepository).save(any(BlobUrl.class));
@@ -137,7 +137,7 @@ class BlobUrlServiceTest {
         fileInfo.setDirectory(false);
         
         when(fileService.getFileInfo(filePath)).thenReturn(fileInfo);
-        when(blobUrlRepository.countActiveUrls(any(LocalDateTime.class))).thenReturn(1000L);
+        when(blobUrlRepository.countActiveUrls(any(OffsetDateTime.class))).thenReturn(1000L);
         
         // Act & Assert
         assertThatThrownBy(() -> blobUrlService.createBlobUrl(filePath, createdBy))
@@ -170,7 +170,7 @@ class BlobUrlServiceTest {
             when(fileService.getFileInfo(filePath)).thenReturn(fileInfo);
             when(fileService.loadAsResource(filePath)).thenReturn(mockResource);
             when(tokenService.generateSecureToken()).thenReturn(token);
-            when(blobUrlRepository.countActiveUrls(any(LocalDateTime.class))).thenReturn(0L);
+            when(blobUrlRepository.countActiveUrls(any(OffsetDateTime.class))).thenReturn(0L);
             doThrow(new IOException("Hard link creation failed")).when(hardLinkManager)
                     .createHardLink(any(Path.class), any(Path.class));
 
@@ -196,7 +196,7 @@ class BlobUrlServiceTest {
         String token = "valid-token";
         BlobUrl blobUrl = BlobUrl.builder()
                 .token(token)
-                .expiresAt(LocalDateTime.now().plusHours(1))
+                .expiresAt(OffsetDateTime.now().plusHours(1))
                 .build();
         
         when(tokenService.validateTokenFormat(token)).thenReturn(true);
@@ -247,7 +247,7 @@ class BlobUrlServiceTest {
         String token = "expired-token";
         BlobUrl blobUrl = BlobUrl.builder()
                 .token(token)
-                .expiresAt(LocalDateTime.now().minusHours(1))
+                .expiresAt(OffsetDateTime.now().minusHours(1))
                 .build();
         
         when(tokenService.validateTokenFormat(token)).thenReturn(true);
@@ -271,7 +271,7 @@ class BlobUrlServiceTest {
         BlobUrl blobUrl = BlobUrl.builder()
                 .token(token)
                 .hardLinkPath(hardLinkFile.toString())
-                .expiresAt(LocalDateTime.now().plusHours(1))
+                .expiresAt(OffsetDateTime.now().plusHours(1))
                 .build();
         
         when(tokenService.validateTokenFormat(token)).thenReturn(true);
@@ -310,7 +310,7 @@ class BlobUrlServiceTest {
         BlobUrl blobUrl = BlobUrl.builder()
                 .token(token)
                 .hardLinkPath(nonExistentFile.toString())
-                .expiresAt(LocalDateTime.now().plusHours(1))
+                .expiresAt(OffsetDateTime.now().plusHours(1))
                 .build();
         
         when(tokenService.validateTokenFormat(token)).thenReturn(true);
@@ -335,16 +335,16 @@ class BlobUrlServiceTest {
         BlobUrl expiredUrl1 = BlobUrl.builder()
                 .token("token1")
                 .hardLinkPath(hardLink1.toString())
-                .expiresAt(LocalDateTime.now().minusHours(1))
+                .expiresAt(OffsetDateTime.now().minusHours(1))
                 .build();
         
         BlobUrl expiredUrl2 = BlobUrl.builder()
                 .token("token2")
                 .hardLinkPath(hardLink2.toString())
-                .expiresAt(LocalDateTime.now().minusHours(1))
+                .expiresAt(OffsetDateTime.now().minusHours(1))
                 .build();
         
-        when(blobUrlRepository.findExpiredUrls(any(LocalDateTime.class)))
+        when(blobUrlRepository.findExpiredUrls(any(OffsetDateTime.class)))
                 .thenReturn(Arrays.asList(expiredUrl1, expiredUrl2));
         
         // Act
@@ -376,7 +376,7 @@ class BlobUrlServiceTest {
                 .hardLinkPath(hardLink2.toString())
                 .build();
         
-        when(blobUrlRepository.findExpiredUrls(any(LocalDateTime.class)))
+        when(blobUrlRepository.findExpiredUrls(any(OffsetDateTime.class)))
                 .thenReturn(Arrays.asList(expiredUrl1, expiredUrl2));
         
         // First cleanup fails, second succeeds
@@ -401,7 +401,7 @@ class BlobUrlServiceTest {
                 BlobUrl.builder().token("token2").createdBy(username).build()
         );
         
-        when(blobUrlRepository.findActiveUrlsByUser(eq(username), any(LocalDateTime.class)))
+        when(blobUrlRepository.findActiveUrlsByUser(eq(username), any(OffsetDateTime.class)))
                 .thenReturn(expectedUrls);
         
         // Act
@@ -414,7 +414,7 @@ class BlobUrlServiceTest {
     @Test
     void getActiveUrlCount_ShouldReturnTotalCount() {
         // Arrange
-        when(blobUrlRepository.countActiveUrls(any(LocalDateTime.class))).thenReturn(42L);
+        when(blobUrlRepository.countActiveUrls(any(OffsetDateTime.class))).thenReturn(42L);
         
         // Act
         long result = blobUrlService.getActiveUrlCount();
@@ -427,7 +427,7 @@ class BlobUrlServiceTest {
     void getActiveUrlCountByUser_ShouldReturnUserCount() {
         // Arrange
         String username = "testuser";
-        when(blobUrlRepository.countActiveUrlsByUser(eq(username), any(LocalDateTime.class)))
+        when(blobUrlRepository.countActiveUrlsByUser(eq(username), any(OffsetDateTime.class)))
                 .thenReturn(5L);
         
         // Act

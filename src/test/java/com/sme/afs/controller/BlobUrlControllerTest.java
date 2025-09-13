@@ -20,9 +20,8 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -56,7 +55,7 @@ class BlobUrlControllerTest {
                 .filename("test-file.pdf")
                 .fileSize(1024L)
                 .contentType("application/pdf")
-                .expiresAt(LocalDateTime.now().plusHours(1))
+                .expiresAt(OffsetDateTime.now().plusHours(1))
                 .status("active")
                 .build();
     }

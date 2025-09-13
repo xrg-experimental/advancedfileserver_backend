@@ -48,9 +48,12 @@ public class SafePathValidator implements ConstraintValidator<SafePath, String> 
                 .replace('\u2215', '/')  // division slash
                 .replace('\u2044', '/'); // fraction slash
 
-        // Reject absolute paths (leading '/')
-        if (path.startsWith("/")) {
+        // Reject UNC paths (double leading slashes), but allow a single leading slash as root-relative
+        if (path.startsWith("//")) {
             return false;
+        }
+        if (path.startsWith("/")) {
+            path = path.substring(1);
         }
 
         // Resolve path segments and ensure no escape beyond root

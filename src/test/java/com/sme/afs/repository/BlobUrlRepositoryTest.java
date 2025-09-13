@@ -9,10 +9,7 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Clock;
-import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
+import java.time.*;
 import java.util.List;
 import java.util.Optional;
 
@@ -32,14 +29,14 @@ class BlobUrlRepositoryTest {
     @Autowired
     private BlobUrlRepository blobUrlRepository;
 
-    private LocalDateTime fixedNow;
+    private OffsetDateTime fixedNow;
 
     @BeforeEach
     void setUp() {
         // Use a fixed clock to avoid flakiness in time-based assertions
         // Fixed clock for deterministic time in tests
         Clock fixedClock = Clock.fixed(Instant.parse("2025-01-01T00:00:00Z"), ZoneId.systemDefault());
-        fixedNow = LocalDateTime.ofInstant(fixedClock.instant(), ZoneId.systemDefault());
+        fixedNow = OffsetDateTime.ofInstant(fixedClock.instant(), ZoneId.systemDefault());
 
         // Create test data using fixedNow
         BlobUrl activeBlobUrl = BlobUrl.builder()
@@ -89,7 +86,7 @@ class BlobUrlRepositoryTest {
     @Test
     void testBlobUrlIsExpiredMethod() {
         // Use real current time to verify isExpired() which relies on system clock
-        LocalDateTime realNow = LocalDateTime.now();
+        OffsetDateTime realNow = OffsetDateTime.now();
         BlobUrl active = BlobUrl.builder()
                 .token("tmp-active")
                 .originalPath("/tmp/original")
@@ -122,7 +119,7 @@ class BlobUrlRepositoryTest {
     @Test
     void testCountActiveUrls() {
         // Arrange
-        LocalDateTime currentTime = fixedNow;
+        OffsetDateTime currentTime = fixedNow;
 
         // Act
         long activeCount = blobUrlRepository.countActiveUrls(currentTime);
@@ -134,7 +131,7 @@ class BlobUrlRepositoryTest {
     @Test
     void testCountActiveUrlsByUser() {
         // Arrange
-        LocalDateTime currentTime = fixedNow;
+        OffsetDateTime currentTime = fixedNow;
 
         // Act
         long testUserCount = blobUrlRepository.countActiveUrlsByUser("testuser", currentTime);
@@ -151,7 +148,7 @@ class BlobUrlRepositoryTest {
     @Transactional
     void testDeleteExpiredUrls() {
         // Arrange
-        LocalDateTime currentTime = fixedNow;
+        OffsetDateTime currentTime = fixedNow;
         long initialCount = blobUrlRepository.count();
 
         // Act
@@ -185,7 +182,7 @@ class BlobUrlRepositoryTest {
     @Test
     void testFindActiveByToken() {
         // Arrange
-        LocalDateTime currentTime = fixedNow;
+        OffsetDateTime currentTime = fixedNow;
 
         // Act
         Optional<BlobUrl> activeUrl = blobUrlRepository.findActiveByToken("active-token-123", currentTime);
@@ -203,7 +200,7 @@ class BlobUrlRepositoryTest {
     @Test
     void testFindActiveUrlsByOriginalPath() {
         // Arrange
-        LocalDateTime currentTime = fixedNow;
+        OffsetDateTime currentTime = fixedNow;
 
         // Act
         List<BlobUrl> urlsForOriginalFile = blobUrlRepository.findActiveUrlsByOriginalPath(
@@ -221,7 +218,7 @@ class BlobUrlRepositoryTest {
     @Test
     void testFindActiveUrlsByUser() {
         // Arrange
-        LocalDateTime currentTime = fixedNow;
+        OffsetDateTime currentTime = fixedNow;
 
         // Act
         List<BlobUrl> activeTestUserUrls = blobUrlRepository.findActiveUrlsByUser("testuser", currentTime);
@@ -252,7 +249,7 @@ class BlobUrlRepositoryTest {
     @Test
     void testFindExpiredUrls() {
         // Arrange
-        LocalDateTime currentTime = fixedNow;
+        OffsetDateTime currentTime = fixedNow;
 
         // Act
         List<BlobUrl> expiredUrls = blobUrlRepository.findExpiredUrls(currentTime);
@@ -266,8 +263,8 @@ class BlobUrlRepositoryTest {
     @Test
     void testFindUrlsExpiringWithin() {
         // Arrange
-        LocalDateTime currentTime = fixedNow;
-        LocalDateTime oneHourFromNow = currentTime.plusHours(1);
+        OffsetDateTime currentTime = fixedNow;
+        OffsetDateTime oneHourFromNow = currentTime.plusHours(1);
 
         // Act
         List<BlobUrl> expiringUrls = blobUrlRepository.findUrlsExpiringWithin(currentTime, oneHourFromNow);
@@ -300,8 +297,8 @@ class BlobUrlRepositoryTest {
 
         // Assert
         assertNotNull(saved.getCreatedAt());
-        assertTrue(saved.getCreatedAt().isBefore(LocalDateTime.now().plusSeconds(1)));
-        assertTrue(saved.getCreatedAt().isAfter(LocalDateTime.now().minusSeconds(1)));
+        assertTrue(saved.getCreatedAt().isBefore(OffsetDateTime.now().plusSeconds(1)));
+        assertTrue(saved.getCreatedAt().isAfter(OffsetDateTime.now().minusSeconds(1)));
     }
 
     @Test

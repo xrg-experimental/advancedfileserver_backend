@@ -23,6 +23,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -135,8 +136,8 @@ public class BlobUrlService {
                     .filename(fileInfo.getName())
                     .contentType(fileInfo.getMimeType() != null ? fileInfo.getMimeType() : "application/octet-stream")
                     .fileSize(fileInfo.getSize())
-                    .createdAt(LocalDateTime.now())
-                    .expiresAt(LocalDateTime.now().plus(blobUrlProperties.getDefaultExpiration()))
+                    .createdAt(OffsetDateTime.now())
+                    .expiresAt(OffsetDateTime.now().plus(blobUrlProperties.getDefaultExpiration()))
                     .createdBy(createdBy)
                     .build();
 
@@ -294,7 +295,7 @@ public class BlobUrlService {
     public int cleanupExpiredUrls() {
         log.debug("Starting cleanup of expired blob URLs");
 
-        LocalDateTime now = LocalDateTime.now();
+        OffsetDateTime now = OffsetDateTime.now();
         List<BlobUrl> expiredUrls = blobUrlRepository.findExpiredUrls(now);
 
         int cleanedCount = 0;
@@ -338,7 +339,7 @@ public class BlobUrlService {
      */
     @Transactional(readOnly = true)
     public List<BlobUrl> getActiveUrlsByUser(String username) {
-        return blobUrlRepository.findActiveUrlsByUser(username, LocalDateTime.now());
+        return blobUrlRepository.findActiveUrlsByUser(username, OffsetDateTime.now());
     }
 
     /**
@@ -348,7 +349,7 @@ public class BlobUrlService {
      */
     @Transactional(readOnly = true)
     public long getActiveUrlCount() {
-        return blobUrlRepository.countActiveUrls(LocalDateTime.now());
+        return blobUrlRepository.countActiveUrls(OffsetDateTime.now());
     }
 
     /**
@@ -359,14 +360,14 @@ public class BlobUrlService {
      */
     @Transactional(readOnly = true)
     public long getActiveUrlCountByUser(String username) {
-        return blobUrlRepository.countActiveUrlsByUser(username, LocalDateTime.now());
+        return blobUrlRepository.countActiveUrlsByUser(username, OffsetDateTime.now());
     }
 
     /**
      * Validates concurrent URL limits to prevent system overload.
      */
     private void validateConcurrentLimits() {
-        long activeCount = blobUrlRepository.countActiveUrls(LocalDateTime.now());
+        long activeCount = blobUrlRepository.countActiveUrls(OffsetDateTime.now());
         if (activeCount >= blobUrlProperties.getMaxConcurrentUrls()) {
             throw new AfsException(ErrorCode.VALIDATION_FAILED, 
                 "Maximum concurrent blob URLs limit reached: " + blobUrlProperties.getMaxConcurrentUrls());

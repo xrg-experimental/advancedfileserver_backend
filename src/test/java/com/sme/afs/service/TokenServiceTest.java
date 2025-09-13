@@ -8,7 +8,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -141,7 +141,7 @@ class TokenServiceTest {
     void isTokenExpired_ShouldReturnTrueForExpiredBlobUrl() {
         BlobUrl expiredBlobUrl = BlobUrl.builder()
                 .token("test-token")
-                .expiresAt(LocalDateTime.now().minusHours(1))
+                .expiresAt(OffsetDateTime.now().minusHours(1))
                 .build();
         
         boolean isExpired = tokenService.isTokenExpired(expiredBlobUrl);
@@ -153,7 +153,7 @@ class TokenServiceTest {
     void isTokenExpired_ShouldReturnFalseForActiveBlobUrl() {
         BlobUrl activeBlobUrl = BlobUrl.builder()
                 .token("test-token")
-                .expiresAt(LocalDateTime.now().plusHours(1))
+                .expiresAt(OffsetDateTime.now().plusHours(1))
                 .build();
         
         boolean isExpired = tokenService.isTokenExpired(activeBlobUrl);
@@ -166,7 +166,7 @@ class TokenServiceTest {
         String token = tokenService.generateSecureToken();
         BlobUrl activeBlobUrl = BlobUrl.builder()
                 .token(token)
-                .expiresAt(LocalDateTime.now().plusHours(1))
+                .expiresAt(OffsetDateTime.now().plusHours(1))
                 .build();
         
         boolean isValid = tokenService.validateToken(token, activeBlobUrl);
@@ -178,7 +178,7 @@ class TokenServiceTest {
     void validateToken_ShouldReturnFalseForInvalidTokenFormat() {
         BlobUrl activeBlobUrl = BlobUrl.builder()
                 .token("valid-token")
-                .expiresAt(LocalDateTime.now().plusHours(1))
+                .expiresAt(OffsetDateTime.now().plusHours(1))
                 .build();
         
         boolean isValid = tokenService.validateToken("invalid!token", activeBlobUrl);
@@ -200,7 +200,7 @@ class TokenServiceTest {
         String token = tokenService.generateSecureToken();
         BlobUrl expiredBlobUrl = BlobUrl.builder()
                 .token(token)
-                .expiresAt(LocalDateTime.now().minusHours(1))
+                .expiresAt(OffsetDateTime.now().minusHours(1))
                 .build();
         
         boolean isValid = tokenService.validateToken(token, expiredBlobUrl);
