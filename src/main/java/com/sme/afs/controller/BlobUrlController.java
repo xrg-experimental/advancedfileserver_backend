@@ -21,8 +21,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.io.IOException;
-
 @Slf4j
 @RestController
 @RequestMapping("/blob-urls")
@@ -76,11 +74,11 @@ public class BlobUrlController {
         @ApiResponse(responseCode = "404", description = "Token not found, expired, or file no longer exists"),
         @ApiResponse(responseCode = "416", description = "Range not satisfiable")
     })
-    public ResponseEntity<Resource> downloadFile(
+    public ResponseEntity<?> downloadFile(
             @Parameter(description = "Blob URL token", required = true)
             @PathVariable String token,
             HttpServletRequest request,
-            HttpServletResponse response) throws IOException {
+            HttpServletResponse ignore) {
         
         log.debug("Download requested for blob URL token: {}", token);
         
@@ -91,7 +89,7 @@ public class BlobUrlController {
         // Handle range requests for partial downloads
         String rangeHeader = request.getHeader(HttpHeaders.RANGE);
         if (rangeHeader != null && rangeHeader.startsWith("bytes=")) {
-            return handleRangeRequest(resource, blobUrlInfo, rangeHeader, response);
+            return handleRangeRequest(resource, blobUrlInfo, rangeHeader);
         }
         
         // Standard full file download
@@ -103,54 +101,52 @@ public class BlobUrlController {
                 .header(HttpHeaders.ACCEPT_RANGES, "bytes")
                 .body(resource);
     }
-    
-    private ResponseEntity<Resource> handleRangeRequest(
-            Resource resource, 
-            BlobUrlResponse blobUrlInfo, 
-            String rangeHeader,
-            HttpServletResponse response) throws IOException {
-        
+
+    private ResponseEntity<?> handleRangeRequest(
+            Resource resource,
+            BlobUrlResponse blobUrlInfo,
+            String rangeHeader) {
+
         long fileSize = blobUrlInfo.getFileSize();
-        
-        // Parse range header (simplified - supports single range only)
-        String range = rangeHeader.substring(6); // Remove "bytes="
-        String[] ranges = range.split("-");
-        
-        long start = 0;
-        long end = fileSize - 1;
-        
         try {
-            if (!ranges[0].isEmpty()) {
-                start = Long.parseLong(ranges[0]);
+            java.util.List<org.springframework.http.HttpRange> ranges = org.springframework.http.HttpRange.parseRanges(rangeHeader);
+            if (ranges.size() != 1) {
+                return ResponseEntity.status(416)
+                        .header(HttpHeaders.CONTENT_RANGE, "bytes */" + fileSize)
+                        .build();
             }
-            if (ranges.length > 1 && !ranges[1].isEmpty()) {
-                end = Long.parseLong(ranges[1]);
+            org.springframework.http.HttpRange r = ranges.get(0);
+            long start = r.getRangeStart(fileSize);
+            long end = r.getRangeEnd(fileSize);
+            if (start < 0 || end < 0 || start > end || end >= fileSize) {
+                return ResponseEntity.status(416)
+                        .header(HttpHeaders.CONTENT_RANGE, "bytes */" + fileSize)
+                        .build();
             }
-            
-            // Validate range
-            if (start < 0 || end >= fileSize || start > end) {
-                response.setStatus(HttpServletResponse.SC_REQUESTED_RANGE_NOT_SATISFIABLE);
-                response.setHeader(HttpHeaders.CONTENT_RANGE, "bytes */" + fileSize);
-                return ResponseEntity.status(416).build();
-            }
-            
-            long contentLength = end - start + 1;
+            long count = end - start + 1;
             String contentRange = "bytes " + start + "-" + end + "/" + fileSize;
-            
-            return ResponseEntity.status(206) // Partial Content
-                    .contentType(MediaType.parseMediaType(blobUrlInfo.getContentType()))
-                    .contentLength(contentLength)
-                    .header(HttpHeaders.CONTENT_RANGE, contentRange)
-                    .header(HttpHeaders.ACCEPT_RANGES, "bytes")
-                    .header(HttpHeaders.CONTENT_DISPOSITION, 
-                           "attachment; filename=\"" + blobUrlInfo.getFilename() + "\"")
+            org.springframework.core.io.support.ResourceRegion region =
+                    new org.springframework.core.io.support.ResourceRegion(resource, start, count);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.add(HttpHeaders.CONTENT_RANGE, contentRange);
+            headers.add(HttpHeaders.ACCEPT_RANGES, "bytes");
+            headers.add(HttpHeaders.CONTENT_DISPOSITION,
+                    org.springframework.http.ContentDisposition.attachment()
+                            .filename(blobUrlInfo.getFilename(), java.nio.charset.StandardCharsets.UTF_8)
+                            .build()
+                            .toString());
+
+            return ResponseEntity.status(206)
+                    .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                    .headers(headers)
+                    .contentLength(count)
                     .body(resource);
-                    
-        } catch (NumberFormatException e) {
+        } catch (IllegalArgumentException ex) {
             log.warn("Invalid range header: {}", rangeHeader);
-            response.setStatus(HttpServletResponse.SC_REQUESTED_RANGE_NOT_SATISFIABLE);
-            response.setHeader(HttpHeaders.CONTENT_RANGE, "bytes */" + fileSize);
-            return ResponseEntity.status(416).build();
+            return ResponseEntity.status(416)
+                    .header(HttpHeaders.CONTENT_RANGE, "bytes */" + fileSize)
+                    .build();
         }
     }
 }
