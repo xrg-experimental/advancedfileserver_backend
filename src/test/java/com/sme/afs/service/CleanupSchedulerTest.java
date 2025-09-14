@@ -113,15 +113,11 @@ class CleanupSchedulerTest {
         cleanupScheduler.cleanupOnStartup();
 
         // Assert
-        try {
-            verify(hardLinkManager, times(2)).deleteHardLink(any(Path.class));
-            verify(hardLinkManager).deleteHardLink(tempDir.resolve("orphaned-token-1"));
-            verify(hardLinkManager).deleteHardLink(tempDir.resolve("orphaned-token-2"));
-            verify(hardLinkManager, never()).deleteHardLink(tempDir.resolve("valid-token-1"));
-            verify(hardLinkManager, never()).deleteHardLink(tempDir.resolve("valid-token-2"));
-        } catch (IOException e) {
-            fail("IOException should not occur in test verification");
-        }
+        verify(hardLinkManager, times(2)).deleteHardLink(any(Path.class));
+        verify(hardLinkManager).deleteHardLink(tempDir.resolve("orphaned-token-1"));
+        verify(hardLinkManager).deleteHardLink(tempDir.resolve("orphaned-token-2"));
+        verify(hardLinkManager, never()).deleteHardLink(tempDir.resolve("valid-token-1"));
+        verify(hardLinkManager, never()).deleteHardLink(tempDir.resolve("valid-token-2"));
     }
 
     @Test
