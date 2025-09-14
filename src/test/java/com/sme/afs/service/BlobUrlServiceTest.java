@@ -107,7 +107,7 @@ class BlobUrlServiceTest {
         assertThat(result.getContentType()).isEqualTo("text/plain");
         assertThat(result.getFileSize()).isEqualTo(1024L);
         assertThat(result.getCreatedBy()).isEqualTo(createdBy);
-        assertThat(result.getExpiresAt()).isAfter(fixedNow);
+        assertThat(result.getExpiresAt()).isEqualTo(fixedNow.plusHours(1));
         
         verify(hardLinkManager).createHardLink(
                 eq(originalFile.toAbsolutePath()),
