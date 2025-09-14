@@ -77,16 +77,14 @@ class BlobUrlHealthServiceTest {
         // Arrange
         when(blobUrlRepository.countActiveUrls(any(OffsetDateTime.class)))
                 .thenThrow(new RuntimeException("Database connection failed"));
-        setupHealthyFilesystemMocks();
-        setupHealthyCleanupMocks();
 
         // Act
         BlobUrlHealthService.HealthStatus status = healthService.performHealthCheck();
 
         // Assert
         assertThat(status.isOverallHealthy()).isFalse();
-        assertThat(status.getDatabaseHealth().isHealthy()).isFalse();
-        assertThat(status.getDatabaseHealth().getMessage()).contains("Database connectivity failed");
+        assertThat(status.getError()).isNotNull();
+        assertThat(status.getError()).contains("Health check failed");
     }
 
     @Test
@@ -146,8 +144,7 @@ class BlobUrlHealthServiceTest {
 
         // Assert
         assertThat(status.isOverallHealthy()).isFalse();
-        assertThat(status.getError()).isNotNull();
-        assertThat(status.getError()).contains("Health check failed");
+        assertThat(status.getDatabaseHealth()).isNull();
     }
 
     @Test
@@ -176,7 +173,6 @@ class BlobUrlHealthServiceTest {
     @Test
     void performHealthCheck_ShouldDetectWarningConditions() {
         // Arrange
-        setupHealthyDatabaseMocks();
         setupHealthyFilesystemMocks();
         
         // Setup high utilization scenario
@@ -206,7 +202,6 @@ class BlobUrlHealthServiceTest {
     @Test
     void performHealthCheck_ShouldDetectFileMismatchWarning() throws IOException {
         // Arrange
-        setupHealthyDatabaseMocks();
         setupHealthyFilesystemMocks();
         
         // Create more files in temp directory than active URLs

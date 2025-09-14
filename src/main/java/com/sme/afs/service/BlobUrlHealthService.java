@@ -93,7 +93,7 @@ public class BlobUrlHealthService {
             
             return status;
             
-        } catch (Exception e) {
+        } catch (Throwable e) {
             log.error("Error during health check", e);
             return HealthStatus.builder()
                     .overallHealthy(false)
@@ -126,10 +126,8 @@ public class BlobUrlHealthService {
                     
         } catch (Exception e) {
             log.error("Database health check failed", e);
-            return DatabaseHealth.builder()
-                    .healthy(false)
-                    .message("Database connectivity failed: " + e.getMessage())
-                    .build();
+            // Propagate to be handled at a higher level as an error in the overall health status
+            throw (e instanceof RuntimeException) ? (RuntimeException) e : new RuntimeException(e);
         }
     }
 
@@ -304,7 +302,7 @@ public class BlobUrlHealthService {
         // File count mismatch warning
         long expectedFiles = metrics.getActiveUrls();
         long actualFiles = metrics.getFilesInTempDirectory();
-        if (Math.abs(actualFiles - expectedFiles) > 5) {
+        if (Math.abs(actualFiles - expectedFiles) >= 5) {
             hasWarnings = true;
             warnings.append("File count mismatch (expected: ").append(expectedFiles)
                     .append(", actual: ").append(actualFiles).append("); ");
