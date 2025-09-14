@@ -183,16 +183,12 @@ class CleanupSchedulerTest {
 
         // Assert
         assertThat(result).isTrue();
-        try {
-            verify(hardLinkManager).deleteHardLink(hardLinkPath);
-        } catch (IOException e) {
-            fail("IOException should not occur in test verification");
-        }
+        verify(hardLinkManager).deleteHardLink(hardLinkPath);
         verify(blobUrlRepository).delete(blobUrl);
     }
 
     @Test
-    void forceCleanupByToken_WhenTokenDoesNotExist_ShouldReturnFalse() {
+    void forceCleanupByToken_WhenTokenDoesNotExist_ShouldReturnFalse() throws IOException {
         // Arrange
         String token = "non-existent-token";
         when(blobUrlRepository.findById(token)).thenReturn(Optional.empty());
@@ -202,11 +198,7 @@ class CleanupSchedulerTest {
 
         // Assert
         assertThat(result).isFalse();
-        try {
-            verify(hardLinkManager, never()).deleteHardLink(any(Path.class));
-        } catch (IOException e) {
-            fail("IOException should not occur in test verification");
-        }
+        verify(hardLinkManager, never()).deleteHardLink(any(Path.class));
         verify(blobUrlRepository, never()).delete(any(BlobUrl.class));
     }
 
@@ -226,11 +218,7 @@ class CleanupSchedulerTest {
 
         // Assert
         assertThat(result).isFalse();
-        try {
-            verify(hardLinkManager).deleteHardLink(hardLinkPath);
-        } catch (IOException e) {
-            fail("IOException should not occur in test verification");
-        }
+        verify(hardLinkManager).deleteHardLink(hardLinkPath);
         verify(blobUrlRepository, never()).delete(any(BlobUrl.class));
     }
 
