@@ -17,6 +17,12 @@ import java.util.List;
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
 
+    /* TODO: CORS wide‑open in main profile; restrict via configuration/profiles before release.
+     *
+     * Consider property‑driven origins per environment (dev: "*", prod: explicit allow‑list)
+     * and avoid allowCredentials(true) with wildcard patterns in production.
+     */
+
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/**")
