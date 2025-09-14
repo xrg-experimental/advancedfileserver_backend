@@ -42,7 +42,8 @@ class GlobalExceptionHandlerTest {
 
         // Then
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
-        assertThat(Objects.requireNonNull(response.getHeaders().getContentType()).toString()).contains(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
+        assertThat(Objects.requireNonNull(response.getHeaders().getContentType())
+                .isCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON)).isTrue();
 
         ProblemResponse body = response.getBody();
         assertThat(body).isNotNull();
