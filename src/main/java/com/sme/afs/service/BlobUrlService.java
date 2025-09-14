@@ -57,15 +57,6 @@ public class BlobUrlService {
         this.clock = clock;
     }
 
-    // Backward-compatible constructor for tests and manual instantiation
-    public BlobUrlService(BlobUrlRepository blobUrlRepository,
-                          TokenService tokenService,
-                          HardLinkManager hardLinkManager,
-                          FileService fileService,
-                          BlobUrlProperties blobUrlProperties) {
-        this(blobUrlRepository, tokenService, hardLinkManager, fileService, blobUrlProperties, Clock.systemDefaultZone());
-    }
-
     @Autowired(required = false)
     private RateLimitService rateLimitService;
 

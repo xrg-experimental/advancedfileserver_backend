@@ -21,8 +21,7 @@ import org.springframework.core.io.UrlResource;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.Duration;
-import java.time.OffsetDateTime;
+import java.time.*;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -52,6 +51,7 @@ class BlobUrlServiceTest {
     private BlobUrlProperties blobUrlProperties;
 
     private BlobUrlService blobUrlService;
+    private OffsetDateTime fixedNow;
 
     @TempDir
     Path tempDir;
@@ -62,9 +62,13 @@ class BlobUrlServiceTest {
         lenient().when(blobUrlProperties.getTempDirectory()).thenReturn("test-temp-blob-urls");
         lenient().when(blobUrlProperties.getDefaultExpiration()).thenReturn(Duration.ofHours(1));
         lenient().when(blobUrlProperties.getMaxConcurrentUrls()).thenReturn(1000L);
-        
+
+        // Use a fixed clock to avoid flakiness in time-based assertions
+        Clock fixedClock = Clock.fixed(Instant.parse("2025-01-01T00:00:00Z"), ZoneOffset.UTC);
+        fixedNow = OffsetDateTime.now(fixedClock);
+
         blobUrlService = new BlobUrlService(
-                blobUrlRepository, tokenService, hardLinkManager, fileService, blobUrlProperties);
+                blobUrlRepository, tokenService, hardLinkManager, fileService, blobUrlProperties, fixedClock);
     }
 
     @Test
@@ -103,7 +107,7 @@ class BlobUrlServiceTest {
         assertThat(result.getContentType()).isEqualTo("text/plain");
         assertThat(result.getFileSize()).isEqualTo(1024L);
         assertThat(result.getCreatedBy()).isEqualTo(createdBy);
-        assertThat(result.getExpiresAt()).isAfter(OffsetDateTime.now());
+        assertThat(result.getExpiresAt()).isAfter(fixedNow);
         
         verify(hardLinkManager).createHardLink(eq(originalFile.toAbsolutePath()), any(Path.class));
         verify(blobUrlRepository).save(any(BlobUrl.class));

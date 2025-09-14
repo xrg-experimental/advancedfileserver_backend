@@ -36,7 +36,6 @@ class BlobUrlIntegrationTest {
         blobUrlProperties.setMaxConcurrentUrls(1000L);
 
         // Use a fixed clock to avoid flakiness in time-based assertions
-        // Fixed clock for deterministic time in tests
         Clock fixedClock = Clock.fixed(Instant.parse("2025-01-01T00:00:00Z"), ZoneOffset.UTC);
         fixedNow = OffsetDateTime.ofInstant(fixedClock.instant(), ZoneOffset.UTC);
 

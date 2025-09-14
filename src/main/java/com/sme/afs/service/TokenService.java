@@ -32,7 +32,7 @@ public class TokenService {
 
     // Backward-compatible constructor for tests and manual instantiation
     public TokenService(BlobUrlProperties blobUrlProperties) {
-        this(blobUrlProperties, Clock.systemDefaultZone());
+        this(blobUrlProperties, Clock.systemUTC());
     }
 
     /**
