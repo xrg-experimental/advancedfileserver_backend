@@ -85,7 +85,7 @@ class FilesystemValidationServiceTest {
         when(blobUrlProperties.getTempDirectory()).thenReturn(nonExistentDir.toString());
 
         // Act
-        FilesystemValidationService.ValidationResult result = validationService.validateFilesystem();
+        validationService.validateFilesystem();
 
         // Assert
         assertThat(Files.exists(nonExistentDir)).isTrue();

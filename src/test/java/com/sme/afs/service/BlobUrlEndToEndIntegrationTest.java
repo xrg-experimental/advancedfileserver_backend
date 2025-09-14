@@ -51,12 +51,9 @@ class BlobUrlEndToEndIntegrationTest {
     @TempDir
     Path testTempDir;
 
-    private Path originalTempDir;
-
     @BeforeEach
     void setUp() throws IOException {
         // Store original temp directory and set test temp directory
-        originalTempDir = Path.of(blobUrlProperties.getTempDirectory());
         blobUrlProperties.setTempDirectory(testTempDir.toString());
         
         // Ensure temp directory exists
@@ -193,9 +190,9 @@ class BlobUrlEndToEndIntegrationTest {
         // Arrange - Create some test data
         Path testFile = testTempDir.resolve("health-test.txt");
         Files.write(testFile, "Health check test".getBytes());
-        
-        BlobUrl activeBlobUrl = blobUrlService.createBlobUrl(testFile.toString(), "testuser");
-        
+
+        blobUrlService.createBlobUrl(testFile.toString(), "testuser");
+
         // Create an expired blob URL manually
         BlobUrl expiredBlobUrl = BlobUrl.builder()
                 .token("expired-token")
