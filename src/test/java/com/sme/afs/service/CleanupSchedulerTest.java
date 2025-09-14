@@ -43,7 +43,7 @@ class CleanupSchedulerTest {
     private BlobUrlProperties blobUrlProperties;
 
     @TempDir
-    Path tempDir;
+    private Path tempDir;
 
     private CleanupScheduler cleanupScheduler;
 
@@ -171,10 +171,11 @@ class CleanupSchedulerTest {
     @Test
     void forceCleanupByToken_WhenTokenExists_ShouldCleanupSuccessfully() throws IOException {
         // Arrange
+        when(blobUrlProperties.getTempDirectory()).thenReturn(tempDir.toString());
         String token = "test-token";
         Path hardLinkPath = tempDir.resolve("test-file");
         Files.createFile(hardLinkPath);
-        
+
         BlobUrl blobUrl = createBlobUrl(token, hardLinkPath.toString());
         when(blobUrlRepository.findById(token)).thenReturn(Optional.of(blobUrl));
 
@@ -205,6 +206,7 @@ class CleanupSchedulerTest {
     @Test
     void forceCleanupByToken_WhenHardLinkDeletionFails_ShouldReturnFalse() throws IOException {
         // Arrange
+        when(blobUrlProperties.getTempDirectory()).thenReturn(tempDir.toString());
         String token = "test-token";
         Path hardLinkPath = tempDir.resolve("test-file");
         Files.createFile(hardLinkPath);

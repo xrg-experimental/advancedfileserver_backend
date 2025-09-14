@@ -137,8 +137,13 @@ public class CleanupScheduler {
             return blobUrlRepository.findById(token)
                     .map(blobUrl -> {
                         try {
-                            // Delete the hard link first
-                            Path hardLinkPath = Paths.get(blobUrl.getHardLinkPath());
+                            // Delete the hard link first (confined to temp dir)
+                            Path hardLinkPath = Paths.get(blobUrl.getHardLinkPath()).normalize().toAbsolutePath();
+                            Path tempRoot = Paths.get(blobUrlProperties.getTempDirectory()).normalize().toAbsolutePath();
+                            if (!hardLinkPath.startsWith(tempRoot)) {
+                                log.error("Refusing to delete path outside temp directory: {}", hardLinkPath);
+                                return false;
+                            }
                             if (Files.exists(hardLinkPath)) {
                                 hardLinkManager.deleteHardLink(hardLinkPath);
                                 log.debug("Deleted hard link: {}", hardLinkPath);
