@@ -14,9 +14,9 @@ import java.time.OffsetDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 public class BlobUrlResponse {
-    
-    @Schema(description = "Complete download URL for the file", 
-            example = "https://api.example.com/api/blob-urls/downloads/abc123def456")
+
+    @Schema(description = "Complete download URL for the file (base path configurable)",
+            example = "https://api.example.com/downloads/abc123def456")
     private String downloadUrl;
     
     @Schema(description = "Unique token for this blob URL", 
