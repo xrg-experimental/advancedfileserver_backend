@@ -109,7 +109,10 @@ class BlobUrlServiceTest {
         assertThat(result.getCreatedBy()).isEqualTo(createdBy);
         assertThat(result.getExpiresAt()).isAfter(fixedNow);
         
-        verify(hardLinkManager).createHardLink(eq(originalFile.toAbsolutePath()), any(Path.class));
+        verify(hardLinkManager).createHardLink(
+                eq(originalFile.toAbsolutePath()),
+                argThat(p -> p.toAbsolutePath().startsWith(Path.of(blobUrlProperties.getTempDirectory()).toAbsolutePath()))
+        );
         verify(blobUrlRepository).save(any(BlobUrl.class));
     }
 
