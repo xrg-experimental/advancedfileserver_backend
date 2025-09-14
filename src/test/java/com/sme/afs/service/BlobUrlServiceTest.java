@@ -200,7 +200,7 @@ class BlobUrlServiceTest {
         String token = "valid-token";
         BlobUrl blobUrl = BlobUrl.builder()
                 .token(token)
-                .expiresAt(OffsetDateTime.now().plusHours(1))
+                .expiresAt(fixedNow.plusHours(1))
                 .build();
         
         when(tokenService.validateTokenFormat(token)).thenReturn(true);
@@ -251,7 +251,7 @@ class BlobUrlServiceTest {
         String token = "expired-token";
         BlobUrl blobUrl = BlobUrl.builder()
                 .token(token)
-                .expiresAt(OffsetDateTime.now().minusHours(1))
+                .expiresAt(fixedNow.minusHours(1))
                 .build();
         
         when(tokenService.validateTokenFormat(token)).thenReturn(true);
@@ -275,7 +275,7 @@ class BlobUrlServiceTest {
         BlobUrl blobUrl = BlobUrl.builder()
                 .token(token)
                 .hardLinkPath(hardLinkFile.toString())
-                .expiresAt(OffsetDateTime.now().plusHours(1))
+                .expiresAt(fixedNow.plusHours(1))
                 .build();
         
         when(tokenService.validateTokenFormat(token)).thenReturn(true);
@@ -314,7 +314,7 @@ class BlobUrlServiceTest {
         BlobUrl blobUrl = BlobUrl.builder()
                 .token(token)
                 .hardLinkPath(nonExistentFile.toString())
-                .expiresAt(OffsetDateTime.now().plusHours(1))
+                .expiresAt(fixedNow.plusHours(1))
                 .build();
         
         when(tokenService.validateTokenFormat(token)).thenReturn(true);
@@ -339,13 +339,13 @@ class BlobUrlServiceTest {
         BlobUrl expiredUrl1 = BlobUrl.builder()
                 .token("token1")
                 .hardLinkPath(hardLink1.toString())
-                .expiresAt(OffsetDateTime.now().minusHours(1))
+                .expiresAt(fixedNow.minusHours(1))
                 .build();
         
         BlobUrl expiredUrl2 = BlobUrl.builder()
                 .token("token2")
                 .hardLinkPath(hardLink2.toString())
-                .expiresAt(OffsetDateTime.now().minusHours(1))
+                .expiresAt(fixedNow.minusHours(1))
                 .build();
         
         when(blobUrlRepository.findExpiredUrls(any(OffsetDateTime.class)))

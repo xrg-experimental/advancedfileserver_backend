@@ -20,7 +20,10 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
+import java.time.Clock;
+import java.time.Instant;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.*;
@@ -53,13 +56,17 @@ class BlobUrlControllerTest {
         createRequest = new BlobUrlCreateRequest("/shared/test-file.pdf");
         invalidRequest = new BlobUrlCreateRequest("/shared/nonexistent.pdf");
 
+        // Use a fixed clock to avoid flakiness in time-based assertions
+        Clock fixedClock = Clock.fixed(Instant.parse("2025-01-01T00:00:00Z"), ZoneOffset.UTC);
+        OffsetDateTime fixedNow = OffsetDateTime.now(fixedClock);
+
         blobUrlResponse = BlobUrlResponse.builder()
                 .downloadUrl("/api/blob-urls/downloads/test-token-123")
                 .token("test-token-123")
                 .filename("test-file.pdf")
                 .fileSize(1024L)
                 .contentType("application/pdf")
-                .expiresAt(OffsetDateTime.now().plusHours(1))
+                .expiresAt(fixedNow.plusHours(1))
                 .status("active")
                 .build();
     }
