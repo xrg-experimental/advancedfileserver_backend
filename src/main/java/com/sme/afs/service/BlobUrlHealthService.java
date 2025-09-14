@@ -124,7 +124,7 @@ public class BlobUrlHealthService {
                 issues.append("High number of expired URLs (").append(stats.getExpiredUrls()).append("); ");
             }
 
-            // Check for orphaned files using metrics (files in temp dir but not active in database)
+            // Check for orphaned files using metrics (files in temp dir but not active in the database)
             long orphanedFiles = metrics.getFilesInTempDirectory() - metrics.getActiveUrls();
             if (orphanedFiles > 10) {
                 healthy = false;
@@ -175,6 +175,7 @@ public class BlobUrlHealthService {
         } catch (Exception e) {
             log.error("Database health check failed", e);
             // Propagate to be handled at a higher level as an error in the overall health status
+            //noinspection ConstantValue
             throw (e instanceof RuntimeException) ? (RuntimeException) e : new RuntimeException(e);
         }
     }
