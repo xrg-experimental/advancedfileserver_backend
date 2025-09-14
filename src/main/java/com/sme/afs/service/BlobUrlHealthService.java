@@ -247,8 +247,10 @@ public class BlobUrlHealthService {
             Path tempDir = Paths.get(blobUrlProperties.getTempDirectory());
             if (Files.exists(tempDir) && Files.isDirectory(tempDir)) {
                 try (DirectoryStream<Path> stream = Files.newDirectoryStream(tempDir)) {
-                    for (Path ignored : stream) {
-                        filesInTempDir++;
+                    for (Path entry : stream) {
+                        if (Files.isRegularFile(entry)) {
+                            filesInTempDir++;
+                        }
                     }
                 } catch (IOException e) {
                     log.warn("Failed to count files in temp directory", e);
