@@ -3,6 +3,9 @@ package com.sme.afs.controller;
 import com.sme.afs.dto.BlobUrlCreateRequest;
 import com.sme.afs.dto.BlobUrlResponse;
 import com.sme.afs.service.BlobUrlService;
+import com.sme.afs.service.BlobUrlHealthService;
+import com.sme.afs.service.CleanupScheduler;
+import com.sme.afs.service.FilesystemValidationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -30,6 +33,9 @@ import org.springframework.web.bind.annotation.*;
 public class BlobUrlController {
     
     private final BlobUrlService blobUrlService;
+    private final BlobUrlHealthService blobUrlHealthService;
+    private final CleanupScheduler cleanupScheduler;
+    private final FilesystemValidationService filesystemValidationService;
 
     @PostMapping("/create")
     @Operation(summary = "Create temporary download URL", 
@@ -148,5 +154,103 @@ public class BlobUrlController {
                     .header(HttpHeaders.CONTENT_RANGE, "bytes */" + fileSize)
                     .build();
         }
+    }
+
+    @GetMapping("/health")
+    @Operation(summary = "Get blob URL system health status", 
+               description = "Returns comprehensive health information about the blob URL system")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Health status retrieved successfully"),
+        @ApiResponse(responseCode = "500", description = "Health check failed")
+    })
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<BlobUrlHealthService.HealthStatus> getHealthStatus() {
+        log.debug("Health status requested for blob URL system");
+        BlobUrlHealthService.HealthStatus health = blobUrlHealthService.performHealthCheck();
+        return ResponseEntity.ok(health);
+    }
+
+    @GetMapping("/stats")
+    @Operation(summary = "Get cleanup statistics", 
+               description = "Returns statistics about the cleanup system and current state")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Statistics retrieved successfully")
+    })
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<CleanupScheduler.CleanupStats> getCleanupStats() {
+        log.debug("Cleanup statistics requested");
+        CleanupScheduler.CleanupStats stats = cleanupScheduler.getCleanupStats();
+        return ResponseEntity.ok(stats);
+    }
+
+    @PostMapping("/admin/cleanup")
+    @Operation(summary = "Force immediate cleanup", 
+               description = "Triggers immediate cleanup of expired URLs and orphaned files")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Cleanup completed successfully"),
+        @ApiResponse(responseCode = "500", description = "Cleanup failed")
+    })
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<java.util.Map<String, Object>> forceCleanup() {
+        log.info("Manual cleanup requested by admin");
+        int cleanedCount = cleanupScheduler.forceCleanup();
+        
+        java.util.Map<String, Object> result = new java.util.HashMap<>();
+        result.put("cleanedCount", cleanedCount);
+        result.put("timestamp", java.time.OffsetDateTime.now());
+        result.put("message", "Cleanup completed successfully");
+        
+        return ResponseEntity.ok(result);
+    }
+
+    @DeleteMapping("/admin/{token}")
+    @Operation(summary = "Force cleanup of specific blob URL", 
+               description = "Manually removes a specific blob URL and its hard link")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Blob URL cleaned up successfully"),
+        @ApiResponse(responseCode = "404", description = "Blob URL not found"),
+        @ApiResponse(responseCode = "500", description = "Cleanup failed")
+    })
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<java.util.Map<String, Object>> forceCleanupByToken(
+            @Parameter(description = "Blob URL token to cleanup", required = true)
+            @PathVariable String token) {
+        log.info("Manual cleanup requested for token: {}", token);
+        boolean success = cleanupScheduler.forceCleanupByToken(token);
+        
+        java.util.Map<String, Object> result = new java.util.HashMap<>();
+        result.put("success", success);
+        result.put("token", token);
+        result.put("timestamp", java.time.OffsetDateTime.now());
+        result.put("message", success ? "Blob URL cleaned up successfully" : "Blob URL not found or cleanup failed");
+        
+        return success ? ResponseEntity.ok(result) : ResponseEntity.notFound().build();
+    }
+
+    @GetMapping("/admin/filesystem-info")
+    @Operation(summary = "Get filesystem information", 
+               description = "Returns information about the filesystem where blob URLs are stored")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Filesystem information retrieved successfully")
+    })
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<FilesystemValidationService.FilesystemInfo> getFilesystemInfo() {
+        log.debug("Filesystem information requested");
+        FilesystemValidationService.FilesystemInfo info = filesystemValidationService.getFilesystemInfo();
+        return ResponseEntity.ok(info);
+    }
+
+    @PostMapping("/admin/validate-filesystem")
+    @Operation(summary = "Validate filesystem capabilities", 
+               description = "Performs validation of filesystem support for blob URL operations")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Filesystem validation completed"),
+        @ApiResponse(responseCode = "500", description = "Filesystem validation failed")
+    })
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<FilesystemValidationService.ValidationResult> validateFilesystem() {
+        log.info("Manual filesystem validation requested");
+        FilesystemValidationService.ValidationResult result = filesystemValidationService.validateFilesystem();
+        return ResponseEntity.ok(result);
     }
 }
