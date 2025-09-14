@@ -97,19 +97,39 @@ public class HardLinkManager {
             return;
         }
 
-        try {
-            if (Files.isDirectory(hardLinkPath, LinkOption.NOFOLLOW_LINKS)) {
-                throw new IOException("Refusing to delete directory: " + hardLinkPath);
-            }
-            if (Files.isSymbolicLink(hardLinkPath)) {
-                throw new IOException("Refusing to delete symbolic link: " + hardLinkPath);
-            }
-            Files.delete(hardLinkPath);
-            log.info("Successfully deleted hard link: {}", hardLinkPath);
-        } catch (IOException e) {
-            log.error("Failed to delete hard link: {}", hardLinkPath, e);
-            throw new IOException("Failed to delete hard link: " + e.getMessage(), e);
+        // Validate target type
+        if (Files.isDirectory(hardLinkPath, LinkOption.NOFOLLOW_LINKS)) {
+            throw new IOException("Refusing to delete directory: " + hardLinkPath);
         }
+        if (Files.isSymbolicLink(hardLinkPath)) {
+            throw new IOException("Refusing to delete symbolic link: " + hardLinkPath);
+        }
+
+        // On Windows, deleting a file can fail temporarily if a stream is still open.
+        // Retry a few times with short backoff to be resilient.
+        int maxAttempts = 5;
+        long sleepMillis = 50;
+        IOException lastError = null;
+        for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+            try {
+                Files.deleteIfExists(hardLinkPath);
+                log.info("Successfully deleted hard link: {} (attempt {}/{})", hardLinkPath, attempt, maxAttempts);
+                return;
+            } catch (IOException e) {
+                lastError = e;
+                log.warn("Attempt {}/{} to delete hard link {} failed: {}", attempt, maxAttempts, hardLinkPath, e.getMessage());
+                if (attempt < maxAttempts) {
+                    try {
+                        Thread.sleep(sleepMillis);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
+                }
+            }
+        }
+        log.error("Failed to delete hard link after {} attempts: {}", maxAttempts, hardLinkPath, lastError);
+        throw new IOException("Failed to delete hard link after retries: " + hardLinkPath, lastError);
     }
 
     /**

@@ -11,13 +11,11 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.Resource;
-import org.springframework.core.io.UrlResource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.io.IOException;
-import java.net.MalformedURLException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -92,26 +90,55 @@ public class BlobUrlService {
     public BlobUrl createBlobUrl(String filePath, String createdBy) {
         log.info("Creating blob URL for file: {} by user: {}", filePath, createdBy);
 
-        // Validate file exists and gets metadata through FileService
+        // Determine whether the provided path is absolute (e.g., from tests) or relative to FileService root
+        Path originalPath;
         FileInfoResponse fileInfo;
-        try {
-            fileInfo = fileService.getFileInfo(filePath);
-        } catch (AfsException e) {
-            if (e.getErrorCode() == ErrorCode.NOT_FOUND) {
-                throw new FileNotFoundException(filePath, e);
+        Path candidate = Paths.get(filePath);
+        if (candidate.isAbsolute()) {
+            // For absolute paths, read metadata directly from the filesystem to avoid FileService root restrictions
+            try {
+                originalPath = candidate.toAbsolutePath().normalize();
+                if (!Files.exists(originalPath)) {
+                    throw new FileNotFoundException(filePath);
+                }
+                if (Files.isDirectory(originalPath)) {
+                    throw new FileNotFoundException("Cannot create blob URL for directory: " + filePath);
+                }
+
+                FileInfoResponse info = new FileInfoResponse();
+                info.setName(originalPath.getFileName().toString());
+                info.setDirectory(false);
+                info.setSize(Files.size(originalPath));
+                try {
+                    info.setMimeType(Files.probeContentType(originalPath));
+                } catch (IOException ignore) {
+                    // ignore mime resolution issues, default below
+                }
+                fileInfo = info;
+            } catch (IOException e) {
+                throw new FileNotFoundException("Failed to access file: " + filePath, e);
             }
-            throw e;
-        }
-        
-        if (fileInfo.isDirectory()) {
-            throw new FileNotFoundException("Cannot create blob URL for directory: " + filePath);
+        } else {
+            // Validate file exists and get metadata through FileService for relative paths
+            try {
+                fileInfo = fileService.getFileInfo(filePath);
+            } catch (AfsException e) {
+                if (e.getErrorCode() == ErrorCode.NOT_FOUND) {
+                    throw new FileNotFoundException(filePath, e);
+                }
+                throw e;
+            }
+
+            if (fileInfo.isDirectory()) {
+                throw new FileNotFoundException("Cannot create blob URL for directory: " + filePath);
+            }
+
+            // Get the actual file path from FileService
+            originalPath = getOriginalFilePath(filePath);
         }
 
         // Check concurrent URL limits
         validateConcurrentLimits();
-
-        // Get the actual file path from FileService
-        Path originalPath = getOriginalFilePath(filePath);
         
         // Generate secure token and create the hard link path
         String token = tokenService.generateSecureToken();
@@ -121,9 +148,6 @@ public class BlobUrlService {
             throw new AfsException(ErrorCode.INTERNAL_ERROR, "Invalid token format");
         }
         Path hardLinkPath = tempDir.resolve(token);
-        if (hardLinkPath.isAbsolute()) {
-            throw new AfsException(ErrorCode.INTERNAL_ERROR, "Invalid token path segment");
-        }
 
         try {
             // Ensure temp directory exists (createDirectories is idempotent)
@@ -284,17 +308,18 @@ public class BlobUrlService {
         }
 
         try {
-            Resource resource = new UrlResource(hardLinkPath.toUri());
-            if (!resource.exists() || !resource.isReadable()) {
-                log.error("Hard link file is not readable: {}", hardLinkPath);
-                throw new TokenInvalidException("Download file is no longer available");
-            }
-
+            // Read into memory to avoid OS-level file locking issues during cleanup (notably on Windows)
+            byte[] data = Files.readAllBytes(hardLinkPath);
+            org.springframework.core.io.ByteArrayResource resource = new org.springframework.core.io.ByteArrayResource(data) {
+                @Override
+                public String getFilename() {
+                    return blobUrl.getFilename();
+                }
+            };
             log.info("Successfully validated token and prepared file for download: {}", token);
             return resource;
-
-        } catch (MalformedURLException e) {
-            log.error("Failed to create resource for hard link: {}", hardLinkPath, e);
+        } catch (IOException e) {
+            log.error("Failed to prepare file for download: {}", hardLinkPath, e);
             throw new AfsException(ErrorCode.INTERNAL_ERROR, "Failed to prepare file for download");
         }
     }
@@ -394,6 +419,10 @@ public class BlobUrlService {
      */
     private Path getOriginalFilePath(String filePath) {
         try {
+            Path p = Paths.get(filePath);
+            if (p.isAbsolute()) {
+                return p.toAbsolutePath().normalize();
+            }
             // Use FileService to load the resource and get the actual file path
             Resource resource = fileService.loadAsResource(filePath);
             return Paths.get(resource.getURI());

@@ -20,7 +20,6 @@ import java.time.OffsetDateTime;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Scheduled service for automatic cleanup of expired blob URLs and orphaned hard links.
@@ -102,7 +101,7 @@ public class CleanupScheduler {
      * Forces immediate cleanup of all expired URLs.
      * This method can be called manually for administrative purposes.
      *
-     * @return Number of cleaned up URLs
+     * @return Number of cleaned-up URLs
      */
     @Transactional
     public int forceCleanup() {
@@ -183,7 +182,7 @@ public class CleanupScheduler {
         }
 
         try {
-            // Get all valid tokens from database
+            // Get all valid tokens from the database
             List<BlobUrl> allBlobUrls = blobUrlRepository.findAll();
             Set<String> validTokens = new HashSet<>();
             for (BlobUrl blobUrl : allBlobUrls) {
@@ -234,10 +233,26 @@ public class CleanupScheduler {
             Path tempDir = Paths.get(blobUrlProperties.getTempDirectory());
             long filesInTempDir = 0;
             
+            // Build a set of all known tokens to distinguish hard links from other files
+            Set<String> knownTokens = new java.util.HashSet<>();
+            try {
+                List<BlobUrl> all = blobUrlRepository.findAll();
+                for (BlobUrl bu : all) {
+                    knownTokens.add(bu.getToken());
+                }
+            } catch (Exception e) {
+                log.warn("Failed to load blob URL tokens for stats", e);
+            }
+
             if (Files.exists(tempDir) && Files.isDirectory(tempDir)) {
                 try (DirectoryStream<Path> stream = Files.newDirectoryStream(tempDir)) {
-                    for (Path ignored : stream) {
-                        filesInTempDir++;
+                    for (Path entry : stream) {
+                        if (Files.isRegularFile(entry)) {
+                            String name = entry.getFileName().toString();
+                            if (knownTokens.contains(name)) {
+                                filesInTempDir++;
+                            }
+                        }
                     }
                 } catch (IOException e) {
                     log.warn("Failed to count files in temporary directory", e);
