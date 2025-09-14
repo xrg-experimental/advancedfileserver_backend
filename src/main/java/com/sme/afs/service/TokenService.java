@@ -72,8 +72,8 @@ public class TokenService {
         int expectedLength = (n / 3) * 4 + ((n % 3 == 0) ? 0 : (n % 3 + 1));
 
         if (token.length() != expectedLength) {
-            log.debug("Token validation failed: invalid length {} (expected {}-{})",
-                    token.length(), expectedLength, expectedLength);
+            log.debug("Token validation failed: invalid length {} (expected {})",
+                    token.length(), expectedLength);
             return false;
         }
 
