@@ -126,7 +126,8 @@ public class FileController {
 
     @GetMapping("/download/**")
     @Operation(summary = "Download file", 
-               description = "Downloads a file directly through the API (deprecated - use blob URLs for better performance)")
+               description = "Downloads a file directly through the API (deprecated - use blob URLs for better performance)",
+               deprecated = true)
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "File downloaded successfully"),
         @ApiResponse(responseCode = "400", description = "Invalid request payload"),
