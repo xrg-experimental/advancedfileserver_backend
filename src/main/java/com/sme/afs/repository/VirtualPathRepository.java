@@ -10,8 +10,9 @@ import java.util.Optional;
 @Repository
 public interface VirtualPathRepository extends JpaRepository<VirtualPath, Long> {
     Optional<VirtualPath> findByVirtualPathAndIsDeletedFalse(String virtualPath);
-    
-    @Query("SELECT v FROM VirtualPath v WHERE v.virtualPath LIKE :parentPath || '/%' AND v.isDeleted = false")
+
+
+    @Query("SELECT v FROM VirtualPath v WHERE v.virtualPath LIKE CONCAT(:parentPath, '/%') AND v.isDeleted = false")
     List<VirtualPath> findChildrenByPath(String parentPath);
     
     List<VirtualPath> findByParentIdAndIsDeletedFalse(Long parentId);
