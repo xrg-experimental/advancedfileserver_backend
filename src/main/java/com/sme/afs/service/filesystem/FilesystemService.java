@@ -27,15 +27,6 @@ public interface FilesystemService {
     FileMetadataResponse getMetadata(Path path) throws IOException;
 
     /**
-     * Resolve a path, handling relative and absolute paths
-     * @param basePath Base path for resolution
-     * @param pathToResolve Path to resolve
-     * @return Resolved normalized path within {@code basePath}
-     * @throws IllegalArgumentException if resolution escapes {@code basePath}
-     */
-    Path resolvePath(Path basePath, String pathToResolve);
-
-    /**
      * Check if a path exists
      * @param path Path to check
      * Notes:

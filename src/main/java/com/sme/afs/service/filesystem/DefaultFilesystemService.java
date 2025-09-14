@@ -46,12 +46,6 @@ public class DefaultFilesystemService implements FilesystemService {
     }
 
     @Override
-    public Path resolvePath(Path basePath, String pathToResolve) {
-        Path resolvedPath = basePath.resolve(pathToResolve).normalize();
-        return resolvedPath.startsWith(basePath) ? resolvedPath : basePath;
-    }
-
-    @Override
     public boolean exists(Path path) {
         return Files.exists(path);
     }
