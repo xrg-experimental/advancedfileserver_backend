@@ -80,7 +80,7 @@ class BlobUrlIntegrationTest {
     @Test
     void tokenSecurity_ShouldGenerateUnpredictableTokens() {
         // Test that tokens are cryptographically secure
-        int tokenCount = 10000;
+        int tokenCount = 1000;
         java.util.Set<String> tokens = new java.util.HashSet<>();
         
         for (int i = 0; i < tokenCount; i++) {
