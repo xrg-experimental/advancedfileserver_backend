@@ -14,14 +14,22 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.util.AntPathMatcher;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.HandlerMapping;
+import org.springframework.web.util.UriUtils;
+
+import java.nio.charset.StandardCharsets;
 
 @RestController
 @RequestMapping("/files")
@@ -65,7 +73,7 @@ public class FileController {
     @Operation(summary = "Create directory", 
                description = "Creates a new directory at the specified path")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Directory created successfully"),
+        @ApiResponse(responseCode = "201", description = "Directory created successfully"),
         @ApiResponse(responseCode = "400", description = "Invalid request payload"),
         @ApiResponse(responseCode = "403", description = "Access denied"),
         @ApiResponse(responseCode = "409", description = "Directory already exists"),
@@ -80,7 +88,7 @@ public class FileController {
     @Operation(summary = "Delete file/directory", 
                description = "Deletes a file or directory at the specified path")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Successfully deleted"),
+        @ApiResponse(responseCode = "204", description = "Successfully deleted"),
         @ApiResponse(responseCode = "400", description = "Invalid request payload"),
         @ApiResponse(responseCode = "403", description = "Access denied"),
         @ApiResponse(responseCode = "404", description = "File not found")
@@ -146,7 +154,7 @@ public class FileController {
             .body(resource);
     }
 
-    @PostMapping("/upload")
+    @PostMapping(path = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(summary = "Upload file", 
                description = "Uploads a file to the specified path")
     @ApiResponses(value = {
@@ -159,15 +167,19 @@ public class FileController {
     @PreAuthorize("hasAnyRole('ADMIN', 'INTERNAL', 'EXTERNAL')")
     public ResponseEntity<FileInfoResponse> upload(
             @Parameter(description = "File to upload", required = true)
-            @RequestParam("file") MultipartFile file,
+            @RequestParam("file") @NotNull MultipartFile file,
             @Parameter(description = "Target path for the file", required = true)
-            @RequestParam("path") String path) {
+            @RequestParam("path") @NotBlank @Size(max = 4096) String path) {
         return ResponseEntity.ok(fileService.store(file, path));
     }
 
     private String extractPathFromRequest(HttpServletRequest request) {
-        String requestURI = request.getRequestURI();
-        String downloadPrefix = "/api/files/download/";
-        return requestURI.substring(requestURI.indexOf(downloadPrefix) + downloadPrefix.length());
+        final String pattern =
+                (String) request.getAttribute(HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE);    // "/files/download/**"
+        final String withinMapping =
+                (String) request.getAttribute(HandlerMapping.PATH_WITHIN_HANDLER_MAPPING_ATTRIBUTE);
+        final String extracted = new AntPathMatcher().extractPathWithinPattern(pattern, withinMapping);
+        // Decode percent-encoded segments
+        return UriUtils.decode(extracted, StandardCharsets.UTF_8);
     }
 }
