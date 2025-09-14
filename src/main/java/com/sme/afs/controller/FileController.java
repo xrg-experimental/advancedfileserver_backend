@@ -39,7 +39,7 @@ public class FileController {
         @ApiResponse(responseCode = "404", description = "Directory not found"),
         @ApiResponse(responseCode = "403", description = "Access denied")
     })
-    @PreAuthorize("hasRole('USER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INTERNAL', 'EXTERNAL')")
     public ResponseEntity<FileListResponse> listDirectory(
             @Valid @RequestBody PathRequest request) {
         return ResponseEntity.ok(fileService.listDirectory(request.getPath()));
@@ -53,7 +53,7 @@ public class FileController {
         @ApiResponse(responseCode = "404", description = "File not found"),
         @ApiResponse(responseCode = "403", description = "Access denied")
     })
-    @PreAuthorize("hasRole('USER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INTERNAL', 'EXTERNAL')")
     public ResponseEntity<FileInfoResponse> getFileInfo(
             @Valid @RequestBody PathRequest request) {
         return ResponseEntity.ok(fileService.getFileInfo(request.getPath()));
@@ -67,7 +67,7 @@ public class FileController {
         @ApiResponse(responseCode = "409", description = "Directory already exists"),
         @ApiResponse(responseCode = "403", description = "Access denied")
     })
-    @PreAuthorize("hasRole('USER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INTERNAL', 'EXTERNAL')")
     public ResponseEntity<FileInfoResponse> createDirectory(
             @Valid @RequestBody PathRequest request) {
         return ResponseEntity.ok(fileService.createDirectory(request.getPath()));
@@ -81,7 +81,7 @@ public class FileController {
         @ApiResponse(responseCode = "404", description = "File not found"),
         @ApiResponse(responseCode = "403", description = "Access denied")
     })
-    @PreAuthorize("hasRole('USER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INTERNAL', 'EXTERNAL')")
     public ResponseEntity<Void> delete(
             @Valid @RequestBody PathRequest request) {
         fileService.delete(request.getPath());
@@ -97,7 +97,7 @@ public class FileController {
         @ApiResponse(responseCode = "409", description = "Target name already exists"),
         @ApiResponse(responseCode = "403", description = "Access denied")
     })
-    @PreAuthorize("hasRole('USER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INTERNAL', 'EXTERNAL')")
     public ResponseEntity<FileInfoResponse> rename(
             @Valid @RequestBody RenameRequest request) {
         return ResponseEntity.ok(fileService.rename(request.getPath(), request.getNewName()));
@@ -112,7 +112,7 @@ public class FileController {
         @ApiResponse(responseCode = "409", description = "Target already exists"),
         @ApiResponse(responseCode = "403", description = "Access denied")
     })
-    @PreAuthorize("hasRole('USER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INTERNAL', 'EXTERNAL')")
     public ResponseEntity<FileInfoResponse> move(
             @Valid @RequestBody MoveRequest request) {
         return ResponseEntity.ok(fileService.move(request.getSourcePath(), request.getTargetPath()));
@@ -126,7 +126,7 @@ public class FileController {
         @ApiResponse(responseCode = "404", description = "File not found"),
         @ApiResponse(responseCode = "403", description = "Access denied")
     })
-    @PreAuthorize("hasRole('USER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INTERNAL', 'EXTERNAL')")
     public ResponseEntity<Resource> download(HttpServletRequest request) {
         String path = extractPathFromRequest(request);
         Resource resource = fileService.loadAsResource(path);
@@ -147,7 +147,7 @@ public class FileController {
         @ApiResponse(responseCode = "403", description = "Access denied"),
         @ApiResponse(responseCode = "413", description = "File too large")
     })
-    @PreAuthorize("hasRole('USER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INTERNAL', 'EXTERNAL')")
     public ResponseEntity<FileInfoResponse> upload(
             @Parameter(description = "File to upload", required = true)
             @RequestParam("file") MultipartFile file,

@@ -72,7 +72,7 @@ class BlobUrlControllerTest {
     }
 
     @Test
-    @WithMockUser(roles = "USER")
+    @WithMockUser(roles = "EXTERNAL")
     void createBlobUrl_Success() throws Exception {
         // Arrange
         when(blobUrlService.createBlobUrl(anyString())).thenReturn(blobUrlResponse);
@@ -100,7 +100,7 @@ class BlobUrlControllerTest {
     }
 
     @Test
-    @WithMockUser(roles = "USER")
+    @WithMockUser(roles = "EXTERNAL")
     void createBlobUrl_FileNotFound() throws Exception {
         // Arrange
         when(blobUrlService.createBlobUrl(anyString()))
@@ -121,7 +121,7 @@ class BlobUrlControllerTest {
     }
 
     @Test
-    @WithMockUser(roles = "USER")
+    @WithMockUser(roles = "EXTERNAL")
     void createBlobUrl_CrossFilesystemError() throws Exception {
         // Arrange
         when(blobUrlService.createBlobUrl(anyString()))
@@ -142,7 +142,7 @@ class BlobUrlControllerTest {
     }
 
     @Test
-    @WithMockUser(roles = "USER")
+    @WithMockUser(roles = "EXTERNAL")
     void createBlobUrl_LinkCreationFailed() throws Exception {
         // Arrange
         when(blobUrlService.createBlobUrl(anyString()))
@@ -163,7 +163,7 @@ class BlobUrlControllerTest {
     }
 
     @Test
-    @WithMockUser(roles = "USER")
+    @WithMockUser(roles = "EXTERNAL")
     void createBlobUrl_ValidationError_EmptyPath() throws Exception {
         // Arrange
         BlobUrlCreateRequest invalidRequest = new BlobUrlCreateRequest("");
@@ -199,7 +199,7 @@ class BlobUrlControllerTest {
     }
 
     @Test
-    @WithMockUser(roles = "USER")
+    @WithMockUser(roles = "EXTERNAL")
     void getBlobUrlStatus_Success() throws Exception {
         // Arrange
         when(blobUrlService.getBlobUrlStatus("test-token-123")).thenReturn(blobUrlResponse);
@@ -222,7 +222,7 @@ class BlobUrlControllerTest {
     }
 
     @Test
-    @WithMockUser(roles = "USER")
+    @WithMockUser(roles = "EXTERNAL")
     void getBlobUrlStatus_TokenInvalid() throws Exception {
         // Arrange
         when(blobUrlService.getBlobUrlStatus("invalid-token"))

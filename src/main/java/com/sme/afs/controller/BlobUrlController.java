@@ -55,7 +55,7 @@ public class BlobUrlController {
         @ApiResponse(responseCode = "404", description = "File not found"),
         @ApiResponse(responseCode = "500", description = "Hard link creation failed or filesystem unsupported")
     })
-    @PreAuthorize("hasRole('USER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INTERNAL', 'EXTERNAL')")
     public ResponseEntity<BlobUrlResponse> createBlobUrl(
             @Valid @RequestBody BlobUrlCreateRequest request) {
         String safePath = request.getFilePath() == null ? "" : request.getFilePath().replaceAll("[\\r\\n]", "");
@@ -71,7 +71,7 @@ public class BlobUrlController {
         @ApiResponse(responseCode = "200", description = "Status retrieved successfully"),
         @ApiResponse(responseCode = "404", description = "Token not found or expired")
     })
-    @PreAuthorize("hasRole('USER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INTERNAL', 'EXTERNAL')")
     public ResponseEntity<BlobUrlResponse> getBlobUrlStatus(
             @Parameter(description = "Blob URL token", required = true)
             @PathVariable String token) {
