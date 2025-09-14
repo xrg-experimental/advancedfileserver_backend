@@ -40,13 +40,13 @@ class FilesystemValidationServiceTest {
     @Test
     void validateFilesystemOnStartup_WhenValidationEnabled_ShouldPerformValidation() {
         // Arrange
-        HardLinkManager hardLinkManager = new HardLinkManager();
-        FilesystemValidationService validationService = new FilesystemValidationService(blobUrlProperties, hardLinkManager);
+        HardLinkManager hardLinkManagerLocal = new HardLinkManager();
+        FilesystemValidationService validationServiceLocal = new FilesystemValidationService(blobUrlProperties, hardLinkManagerLocal);
         when(blobUrlProperties.isValidateFilesystemOnStartup()).thenReturn(true);
         when(blobUrlProperties.getTempDirectory()).thenReturn(tempDir.toString());
 
         // Act & Assert
-        assertThatCode(validationService::validateFilesystemOnStartup)
+        assertThatCode(validationServiceLocal::validateFilesystemOnStartup)
                 .doesNotThrowAnyException();
     }
 
