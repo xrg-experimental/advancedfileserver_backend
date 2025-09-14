@@ -66,6 +66,7 @@ class FilesystemValidationServiceTest {
     void validateFilesystem_WhenAllValidationsPassed_ShouldReturnSuccess() throws IOException {
         // Arrange
         when(blobUrlProperties.getTempDirectory()).thenReturn(tempDir.toString());
+        // use non-mock instances because the mock objects fail to give the correct results
         HardLinkManager hardLinkManagerLocal = new HardLinkManager();
         FilesystemValidationService validationServiceLocal = new FilesystemValidationService(blobUrlProperties, hardLinkManagerLocal);
 
