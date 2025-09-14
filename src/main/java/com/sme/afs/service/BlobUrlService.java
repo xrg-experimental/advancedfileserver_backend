@@ -428,10 +428,6 @@ public class BlobUrlService {
      */
     private Path getOriginalFilePath(String filePath) {
         try {
-            Path p = Paths.get(filePath);
-            if (p.isAbsolute()) {
-                return p.toAbsolutePath().normalize();
-            }
             // Use FileService to load the resource and get the actual file path
             Resource resource = fileService.loadAsResource(filePath);
             return Paths.get(resource.getURI());
