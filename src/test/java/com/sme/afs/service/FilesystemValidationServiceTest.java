@@ -7,12 +7,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.boot.context.event.ApplicationReadyEvent;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.attribute.PosixFilePermissions;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -28,9 +26,6 @@ class FilesystemValidationServiceTest {
 
     @Mock
     private HardLinkManager hardLinkManager;
-
-    @Mock
-    private ApplicationReadyEvent applicationReadyEvent;
 
     @TempDir
     Path tempDir;
@@ -144,7 +139,7 @@ class FilesystemValidationServiceTest {
     }
 
     @Test
-    void getFilesystemInfo_WhenTempDirectoryExists_ShouldReturnCorrectInfo() throws IOException {
+    void getFilesystemInfo_WhenTempDirectoryExists_ShouldReturnCorrectInfo() {
         // Arrange
         when(blobUrlProperties.getTempDirectory()).thenReturn(tempDir.toString());
 

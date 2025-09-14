@@ -289,7 +289,7 @@ public class BlobUrlHealthService {
         boolean hasWarnings = false;
         StringBuilder warnings = new StringBuilder();
         
-        // High utilization warning
+        // High-utilization warning
         if (metrics.getUtilizationPercent() > 80) {
             hasWarnings = true;
             warnings.append("High utilization (").append(String.format("%.1f", metrics.getUtilizationPercent())).append("%); ");

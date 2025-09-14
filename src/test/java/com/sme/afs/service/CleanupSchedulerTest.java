@@ -9,7 +9,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.boot.context.event.ApplicationReadyEvent;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -42,9 +41,6 @@ class CleanupSchedulerTest {
 
     @Mock
     private BlobUrlProperties blobUrlProperties;
-
-    @Mock
-    private ApplicationReadyEvent applicationReadyEvent;
 
     @TempDir
     Path tempDir;

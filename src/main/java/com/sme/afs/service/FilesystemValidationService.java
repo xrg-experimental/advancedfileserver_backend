@@ -202,7 +202,7 @@ public class FilesystemValidationService {
             String testId = UUID.randomUUID().toString();
             testFile = tempDir.resolve("permission-test-" + testId + ".tmp");
             
-            // Create test file
+            // Create the test file
             Files.write(testFile, "permission test".getBytes());
             
             // Test read permission
