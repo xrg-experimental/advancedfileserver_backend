@@ -35,8 +35,8 @@ class BlobUrlRepositoryTest {
     void setUp() {
         // Use a fixed clock to avoid flakiness in time-based assertions
         // Fixed clock for deterministic time in tests
-        Clock fixedClock = Clock.fixed(Instant.parse("2025-01-01T00:00:00Z"), ZoneId.systemDefault());
-        fixedNow = OffsetDateTime.ofInstant(fixedClock.instant(), ZoneId.systemDefault());
+        Clock fixedClock = Clock.fixed(Instant.parse("2025-01-01T00:00:00Z"), ZoneOffset.UTC);
+        fixedNow = OffsetDateTime.ofInstant(fixedClock.instant(), ZoneOffset.UTC);
 
         // Create test data using fixedNow
         BlobUrl activeBlobUrl = BlobUrl.builder()
