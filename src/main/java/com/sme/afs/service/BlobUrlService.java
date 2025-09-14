@@ -98,6 +98,12 @@ public class BlobUrlService {
             // For absolute paths, read metadata directly from the filesystem to avoid FileService root restrictions
             try {
                 originalPath = candidate.toAbsolutePath().normalize();
+
+                // Validate that the path doesn't contain directory traversal attempts
+                if (originalPath.toString().contains("..") || !originalPath.startsWith(originalPath.getRoot())) {
+                    throw new FileNotFoundException("Invalid file path: " + filePath);
+                }
+
                 if (!Files.exists(originalPath)) {
                     throw new FileNotFoundException(filePath);
                 }
