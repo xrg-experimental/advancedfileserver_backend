@@ -68,13 +68,12 @@ public class TokenService {
         }
 
         // Check length - Base64 encoding of tokenLength bytes should produce a predictable length
-        // Base64 encoding produces 4 characters for every 3 bytes, but we use no padding
-        int expectedMinLength = (blobUrlProperties.getTokenLength() * 4) / 3;
-        int expectedMaxLength = expectedMinLength + 2; // Account for rounding in no-padding encoding
-        
-        if (token.length() < expectedMinLength || token.length() > expectedMaxLength) {
-            log.debug("Token validation failed: invalid length {} (expected {}-{})", 
-                     token.length(), expectedMinLength, expectedMaxLength);
+        int n = blobUrlProperties.getTokenLength();
+        int expectedLength = (n / 3) * 4 + ((n % 3 == 0) ? 0 : (n % 3 + 1));
+
+        if (token.length() != expectedLength) {
+            log.debug("Token validation failed: invalid length {} (expected {}-{})",
+                    token.length(), expectedLength, expectedLength);
             return false;
         }
 
