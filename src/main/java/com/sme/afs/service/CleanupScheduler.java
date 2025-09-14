@@ -187,6 +187,10 @@ public class CleanupScheduler {
         }
 
         try {
+            /* TODO: Orphan scan scales with findAll(); consider narrowing and batching
+             *
+             * Loading all BlobUrl rows to build a token set can be heavy. Prefer querying only active tokens or streaming IDs, and consider batching when the table grows.
+             */
             // Get all valid tokens from the database
             List<BlobUrl> allBlobUrls = blobUrlRepository.findAll();
             Set<String> validTokens = new HashSet<>();
