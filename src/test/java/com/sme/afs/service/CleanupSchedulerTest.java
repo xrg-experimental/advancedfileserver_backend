@@ -121,7 +121,7 @@ class CleanupSchedulerTest {
     }
 
     @Test
-    void cleanupOnStartup_WhenStartupCleanupDisabled_ShouldSkipCleanup() {
+    void cleanupOnStartup_WhenStartupCleanupDisabled_ShouldSkipCleanup() throws IOException {
         // Arrange
         when(blobUrlProperties.isCleanupOnStartup()).thenReturn(false);
 
@@ -130,11 +130,7 @@ class CleanupSchedulerTest {
 
         // Assert
         verify(blobUrlRepository, never()).findAll();
-        try {
-            verify(hardLinkManager, never()).deleteHardLink(any(Path.class));
-        } catch (IOException e) {
-            fail("IOException should not occur in test verification");
-        }
+        verify(hardLinkManager, never()).deleteHardLink(any(Path.class));
     }
 
     @Test
