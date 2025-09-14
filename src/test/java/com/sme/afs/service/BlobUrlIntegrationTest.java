@@ -120,7 +120,9 @@ class BlobUrlIntegrationTest {
         hardLinkManager.validateFilesystemSupport(testDir);
         
         // Verify test files are cleaned up
-        assertThat(Files.list(testDir)).isEmpty();
+        try (java.util.stream.Stream<Path> s = Files.list(testDir)) {
+            assertThat(s).isEmpty();
+        }
     }
 
     @Test
