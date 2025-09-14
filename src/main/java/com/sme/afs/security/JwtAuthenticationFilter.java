@@ -7,6 +7,7 @@ import com.sme.afs.error.ErrorCode;
 import com.sme.afs.exception.session.SessionException;
 import com.sme.afs.web.CorrelationIdFilter;
 import io.jsonwebtoken.Claims;
+import jakarta.servlet.ServletException;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
@@ -46,7 +47,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(@NonNull HttpServletRequest request,
                                     @NonNull HttpServletResponse response, @NonNull FilterChain filterChain)
-            throws IOException {
+            throws ServletException, IOException {
 
         try {
             final String authHeader = request.getHeader("Authorization");
