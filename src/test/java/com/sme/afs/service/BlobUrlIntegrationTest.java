@@ -148,7 +148,7 @@ class BlobUrlIntegrationTest {
                 .createdBy("testuser")
                 .build();
         
-        assertThat(validBlobUrl.isExpired()).isFalse();
+        assertThat(validBlobUrl.isExpiredAt(OffsetDateTime.now())).isFalse();
         assertThat(validBlobUrl.isExpiryAfterCreation()).isTrue();
         
         // Test expiration
@@ -156,7 +156,7 @@ class BlobUrlIntegrationTest {
                 .expiresAt(OffsetDateTime.now().minusHours(1))
                 .build();
         
-        assertThat(expiredBlobUrl.isExpired()).isTrue();
+        assertThat(expiredBlobUrl.isExpiredAt(OffsetDateTime.now())).isTrue();
     }
 
     @Test

@@ -2,11 +2,13 @@ package com.sme.afs.service;
 
 import com.sme.afs.config.BlobUrlProperties;
 import com.sme.afs.model.BlobUrl;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.security.SecureRandom;
+import java.time.Clock;
+import java.time.OffsetDateTime;
 import java.util.Base64;
 
 /**
@@ -14,13 +16,24 @@ import java.util.Base64;
  * Uses SecureRandom for token generation and URL-safe Base64 encoding.
  */
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class TokenService {
 
     private final BlobUrlProperties blobUrlProperties;
+    private final Clock clock;
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
     private static final Base64.Encoder URL_ENCODER = Base64.getUrlEncoder().withoutPadding();
+
+    @Autowired
+    public TokenService(BlobUrlProperties blobUrlProperties, Clock clock) {
+        this.blobUrlProperties = blobUrlProperties;
+        this.clock = clock;
+    }
+
+    // Backward-compatible constructor for tests and manual instantiation
+    public TokenService(BlobUrlProperties blobUrlProperties) {
+        this(blobUrlProperties, Clock.systemDefaultZone());
+    }
 
     /**
      * Generates a cryptographically secure random token for blob URLs.
@@ -85,7 +98,7 @@ public class TokenService {
             return true;
         }
         
-        boolean expired = blobUrl.isExpired();
+        boolean expired = blobUrl.isExpiredAt(OffsetDateTime.now(clock));
         log.debug("Token {} expiration check: {}", blobUrl.getToken(), expired ? "EXPIRED" : "ACTIVE");
         return expired;
     }

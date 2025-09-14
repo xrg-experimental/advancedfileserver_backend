@@ -9,7 +9,6 @@ import com.sme.afs.model.BlobUrl;
 import com.sme.afs.repository.BlobUrlRepository;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
@@ -23,6 +22,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.OffsetDateTime;
+import java.time.Clock;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -32,7 +32,6 @@ import java.util.Optional;
  * Handles creation, validation, and retrieval of temporary download URLs using hard links.
  */
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class BlobUrlService {
 
@@ -41,6 +40,31 @@ public class BlobUrlService {
     private final HardLinkManager hardLinkManager;
     private final FileService fileService;
     private final BlobUrlProperties blobUrlProperties;
+    private final Clock clock;
+
+    @Autowired
+    public BlobUrlService(BlobUrlRepository blobUrlRepository,
+                          TokenService tokenService,
+                          HardLinkManager hardLinkManager,
+                          FileService fileService,
+                          BlobUrlProperties blobUrlProperties,
+                          Clock clock) {
+        this.blobUrlRepository = blobUrlRepository;
+        this.tokenService = tokenService;
+        this.hardLinkManager = hardLinkManager;
+        this.fileService = fileService;
+        this.blobUrlProperties = blobUrlProperties;
+        this.clock = clock;
+    }
+
+    // Backward-compatible constructor for tests and manual instantiation
+    public BlobUrlService(BlobUrlRepository blobUrlRepository,
+                          TokenService tokenService,
+                          HardLinkManager hardLinkManager,
+                          FileService fileService,
+                          BlobUrlProperties blobUrlProperties) {
+        this(blobUrlRepository, tokenService, hardLinkManager, fileService, blobUrlProperties, Clock.systemDefaultZone());
+    }
 
     @Autowired(required = false)
     private RateLimitService rateLimitService;
@@ -135,8 +159,8 @@ public class BlobUrlService {
                     .filename(fileInfo.getName())
                     .contentType(fileInfo.getMimeType() != null ? fileInfo.getMimeType() : "application/octet-stream")
                     .fileSize(fileInfo.getSize())
-                    .createdAt(OffsetDateTime.now())
-                    .expiresAt(OffsetDateTime.now().plus(blobUrlProperties.getDefaultExpiration()))
+                    .createdAt(OffsetDateTime.now(clock))
+                    .expiresAt(OffsetDateTime.now(clock).plus(blobUrlProperties.getDefaultExpiration()))
                     .createdBy(createdBy)
                     .build();
 
@@ -294,7 +318,7 @@ public class BlobUrlService {
     public int cleanupExpiredUrls() {
         log.debug("Starting cleanup of expired blob URLs");
 
-        OffsetDateTime now = OffsetDateTime.now();
+        OffsetDateTime now = OffsetDateTime.now(clock);
         List<BlobUrl> expiredUrls = blobUrlRepository.findExpiredUrls(now);
 
         int cleanedCount = 0;
@@ -338,7 +362,7 @@ public class BlobUrlService {
      */
     @Transactional(readOnly = true)
     public List<BlobUrl> getActiveUrlsByUser(String username) {
-        return blobUrlRepository.findActiveUrlsByUser(username, OffsetDateTime.now());
+        return blobUrlRepository.findActiveUrlsByUser(username, OffsetDateTime.now(clock));
     }
 
     /**
@@ -348,7 +372,7 @@ public class BlobUrlService {
      */
     @Transactional(readOnly = true)
     public long getActiveUrlCount() {
-        return blobUrlRepository.countActiveUrls(OffsetDateTime.now());
+        return blobUrlRepository.countActiveUrls(OffsetDateTime.now(clock));
     }
 
     /**
@@ -359,14 +383,14 @@ public class BlobUrlService {
      */
     @Transactional(readOnly = true)
     public long getActiveUrlCountByUser(String username) {
-        return blobUrlRepository.countActiveUrlsByUser(username, OffsetDateTime.now());
+        return blobUrlRepository.countActiveUrlsByUser(username, OffsetDateTime.now(clock));
     }
 
     /**
      * Validates concurrent URL limits to prevent system overload.
      */
     private void validateConcurrentLimits() {
-        long activeCount = blobUrlRepository.countActiveUrls(OffsetDateTime.now());
+        long activeCount = blobUrlRepository.countActiveUrls(OffsetDateTime.now(clock));
         if (activeCount >= blobUrlProperties.getMaxConcurrentUrls()) {
             throw new AfsException(ErrorCode.VALIDATION_FAILED, 
                 "Maximum concurrent blob URLs limit reached: " + blobUrlProperties.getMaxConcurrentUrls());

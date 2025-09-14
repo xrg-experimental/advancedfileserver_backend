@@ -112,8 +112,8 @@ class BlobUrlRepositoryTest {
                 .build();
 
         // Act & Assert
-        assertFalse(active.isExpired());
-        assertTrue(expired.isExpired());
+        assertFalse(active.isExpiredAt(realNow));
+        assertTrue(expired.isExpiredAt(realNow));
     }
 
     @Test
@@ -257,7 +257,7 @@ class BlobUrlRepositoryTest {
         // Assert
         assertEquals(1, expiredUrls.size());
         assertEquals("expired-token-456", expiredUrls.get(0).getToken());
-        assertTrue(expiredUrls.get(0).isExpired());
+        assertTrue(expiredUrls.get(0).isExpiredAt(currentTime));
     }
 
     @Test
@@ -278,7 +278,7 @@ class BlobUrlRepositoryTest {
     }
 
     @Test
-    void testPrePersistCreatedAt() {
+    void testPersistCreatedAtMustBeProvided() {
         // Arrange
         BlobUrl newBlobUrl = BlobUrl.builder()
                 .token("test-prepersist")
@@ -287,9 +287,9 @@ class BlobUrlRepositoryTest {
                 .filename("test.txt")
                 .contentType("text/plain")
                 .fileSize(100L)
+                .createdAt(fixedNow)
                 .expiresAt(fixedNow.plusHours(1))
                 .createdBy("testuser")
-                // Note: not setting createdAt to test @PrePersist
                 .build();
 
         // Act
@@ -297,8 +297,7 @@ class BlobUrlRepositoryTest {
 
         // Assert
         assertNotNull(saved.getCreatedAt());
-        assertTrue(saved.getCreatedAt().isBefore(OffsetDateTime.now().plusSeconds(1)));
-        assertTrue(saved.getCreatedAt().isAfter(OffsetDateTime.now().minusSeconds(1)));
+        assertEquals(fixedNow, saved.getCreatedAt());
     }
 
     @Test

@@ -100,24 +100,18 @@ public class BlobUrl {
     private String createdBy;
 
     /**
-     * Check if this blob URL has expired
+     * Check if this blob URL has expired at the given reference time.
+     * This entity does not access the system clock to remain deterministic in tests.
      */
-    public boolean isExpired() {
-        return OffsetDateTime.now().isAfter(expiresAt);
+    public boolean isExpiredAt(OffsetDateTime referenceTime) {
+        if (expiresAt == null || referenceTime == null) {
+            return false;
+        }
+        return referenceTime.isAfter(expiresAt);
     }
 
     @jakarta.validation.constraints.AssertTrue(message = "expiresAt must be after createdAt")
     public boolean isExpiryAfterCreation() {
         return createdAt == null || expiresAt == null || expiresAt.isAfter(createdAt);
-    }
-
-    /**
-     * Set creation timestamp to current time
-     */
-    @PrePersist
-    protected void onCreate() {
-        if (createdAt == null) {
-            createdAt = OffsetDateTime.now();
-        }
     }
 }
