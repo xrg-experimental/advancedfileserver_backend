@@ -131,9 +131,8 @@ public class BlobUrlController {
             }
             long count = end - start + 1;
             String contentRange = "bytes " + start + "-" + end + "/" + fileSize;
-            org.springframework.core.io.support.ResourceRegion region =
-                    new org.springframework.core.io.support.ResourceRegion(resource, start, count);
 
+            // Build headers required for a 206 Partial Content response
             HttpHeaders headers = new HttpHeaders();
             headers.add(HttpHeaders.CONTENT_RANGE, contentRange);
             headers.add(HttpHeaders.ACCEPT_RANGES, "bytes");
@@ -143,16 +142,48 @@ public class BlobUrlController {
                             .build()
                             .toString());
 
+            // Determine content type; fall back to octet-stream
+            MediaType ct = org.springframework.http.MediaTypeFactory
+                    .getMediaType(resource)
+                    .orElse(MediaType.APPLICATION_OCTET_STREAM);
+
+            // Stream only the requested byte range to the client to avoid relying on ResourceRegion converters
+            java.io.InputStream is = resource.getInputStream();
+            try {
+                // Ensure we position the stream at the requested start
+                is.skipNBytes(start);
+            } catch (java.io.EOFException eof) {
+                // Defensive: if underlying stream shorter than expected, return 416
+                return ResponseEntity.status(416)
+                        .header(HttpHeaders.CONTENT_RANGE, "bytes */" + fileSize)
+                        .build();
+            }
+
+            // Limit the stream to the requested number of bytes
+            org.apache.commons.io.input.BoundedInputStream bounded = new org.apache.commons.io.input.BoundedInputStream(is, count);
+            // Ensure closing this stream does not close the underlying stream prematurely (handled by container)
+            bounded.setPropagateClose(true);
+
+            org.springframework.core.io.InputStreamResource partialResource = new org.springframework.core.io.InputStreamResource(bounded) {
+                @Override
+                public String getFilename() {
+                    return blobUrlInfo.getFilename();
+                }
+            };
+
             return ResponseEntity.status(206)
-                    .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                    .contentType(ct)
                     .headers(headers)
                     .contentLength(count)
-                    .body(resource);
+                    .body(partialResource);
         } catch (IllegalArgumentException ex) {
             log.warn("Invalid range header: {}", rangeHeader);
             return ResponseEntity.status(416)
                     .header(HttpHeaders.CONTENT_RANGE, "bytes */" + fileSize)
                     .build();
+        } catch (java.io.IOException ioEx) {
+            log.error("I/O error processing range request: {}", ioEx.getMessage(), ioEx);
+            return ResponseEntity.internalServerError().build();
         }
     }
 
