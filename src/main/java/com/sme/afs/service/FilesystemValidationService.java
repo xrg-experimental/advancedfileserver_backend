@@ -145,7 +145,12 @@ public class FilesystemValidationService {
             String testId = UUID.randomUUID().toString();
             testFile = tempDir.resolve("hardlink-test-" + testId + ".tmp");
             testLink = tempDir.resolve("hardlink-test-link-" + testId + ".tmp");
-            
+
+            /* TODO: Validation writes test artifacts on every call; consider caching to reduce IO
+             *
+             * validateFilesystem() creates/deletes files each invocation (also via admin endpoint).
+             * Cache a successful result for a short TTL (e.g., 1–5 minutes) to reduce churn.
+             */
             // Write some test content
             Files.write(testFile, "hard link test".getBytes());
             
