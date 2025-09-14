@@ -36,8 +36,9 @@ public class FileController {
                description = "Retrieves the contents of a directory including files and subdirectories")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Successfully retrieved directory listing"),
-        @ApiResponse(responseCode = "404", description = "Directory not found"),
-        @ApiResponse(responseCode = "403", description = "Access denied")
+        @ApiResponse(responseCode = "400", description = "Invalid request payload"),
+        @ApiResponse(responseCode = "403", description = "Access denied"),
+        @ApiResponse(responseCode = "404", description = "Directory not found")
     })
     @PreAuthorize("hasAnyRole('ADMIN', 'INTERNAL', 'EXTERNAL')")
     public ResponseEntity<FileListResponse> listDirectory(
@@ -50,8 +51,9 @@ public class FileController {
                description = "Retrieves detailed information about a file or directory")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Successfully retrieved file info"),
-        @ApiResponse(responseCode = "404", description = "File not found"),
-        @ApiResponse(responseCode = "403", description = "Access denied")
+        @ApiResponse(responseCode = "400", description = "Invalid request payload"),
+        @ApiResponse(responseCode = "403", description = "Access denied"),
+        @ApiResponse(responseCode = "404", description = "File not found")
     })
     @PreAuthorize("hasAnyRole('ADMIN', 'INTERNAL', 'EXTERNAL')")
     public ResponseEntity<FileInfoResponse> getFileInfo(
@@ -64,13 +66,14 @@ public class FileController {
                description = "Creates a new directory at the specified path")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Directory created successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid request payload"),
+        @ApiResponse(responseCode = "403", description = "Access denied"),
         @ApiResponse(responseCode = "409", description = "Directory already exists"),
-        @ApiResponse(responseCode = "403", description = "Access denied")
     })
     @PreAuthorize("hasAnyRole('ADMIN', 'INTERNAL', 'EXTERNAL')")
     public ResponseEntity<FileInfoResponse> createDirectory(
             @Valid @RequestBody PathRequest request) {
-        return ResponseEntity.ok(fileService.createDirectory(request.getPath()));
+        return ResponseEntity.status(201).body(fileService.createDirectory(request.getPath()));
     }
 
     @PostMapping("/delete")
@@ -78,14 +81,15 @@ public class FileController {
                description = "Deletes a file or directory at the specified path")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Successfully deleted"),
-        @ApiResponse(responseCode = "404", description = "File not found"),
-        @ApiResponse(responseCode = "403", description = "Access denied")
+        @ApiResponse(responseCode = "400", description = "Invalid request payload"),
+        @ApiResponse(responseCode = "403", description = "Access denied"),
+        @ApiResponse(responseCode = "404", description = "File not found")
     })
     @PreAuthorize("hasAnyRole('ADMIN', 'INTERNAL', 'EXTERNAL')")
     public ResponseEntity<Void> delete(
             @Valid @RequestBody PathRequest request) {
         fileService.delete(request.getPath());
-        return ResponseEntity.ok().build();
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/rename")
@@ -93,9 +97,10 @@ public class FileController {
                description = "Renames a file or directory to a new name")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Successfully renamed"),
+        @ApiResponse(responseCode = "400", description = "Invalid request payload"),
         @ApiResponse(responseCode = "404", description = "File not found"),
-        @ApiResponse(responseCode = "409", description = "Target name already exists"),
-        @ApiResponse(responseCode = "403", description = "Access denied")
+        @ApiResponse(responseCode = "403", description = "Access denied"),
+        @ApiResponse(responseCode = "409", description = "Target name already exists")
     })
     @PreAuthorize("hasAnyRole('ADMIN', 'INTERNAL', 'EXTERNAL')")
     public ResponseEntity<FileInfoResponse> rename(
@@ -108,9 +113,10 @@ public class FileController {
                description = "Moves a file or directory from source to target path")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Successfully moved"),
+        @ApiResponse(responseCode = "400", description = "Invalid request payload"),
+        @ApiResponse(responseCode = "403", description = "Access denied"),
         @ApiResponse(responseCode = "404", description = "Source not found"),
-        @ApiResponse(responseCode = "409", description = "Target already exists"),
-        @ApiResponse(responseCode = "403", description = "Access denied")
+        @ApiResponse(responseCode = "409", description = "Target already exists")
     })
     @PreAuthorize("hasAnyRole('ADMIN', 'INTERNAL', 'EXTERNAL')")
     public ResponseEntity<FileInfoResponse> move(
@@ -123,8 +129,9 @@ public class FileController {
                description = "Downloads a file directly through the API (deprecated - use blob URLs for better performance)")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "File downloaded successfully"),
-        @ApiResponse(responseCode = "404", description = "File not found"),
-        @ApiResponse(responseCode = "403", description = "Access denied")
+        @ApiResponse(responseCode = "400", description = "Invalid request payload"),
+        @ApiResponse(responseCode = "403", description = "Access denied"),
+        @ApiResponse(responseCode = "404", description = "File not found")
     })
     @PreAuthorize("hasAnyRole('ADMIN', 'INTERNAL', 'EXTERNAL')")
     public ResponseEntity<Resource> download(HttpServletRequest request) {
@@ -143,8 +150,9 @@ public class FileController {
                description = "Uploads a file to the specified path")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "File uploaded successfully"),
-        @ApiResponse(responseCode = "409", description = "File already exists"),
+        @ApiResponse(responseCode = "400", description = "Invalid request payload"),
         @ApiResponse(responseCode = "403", description = "Access denied"),
+        @ApiResponse(responseCode = "409", description = "File already exists"),
         @ApiResponse(responseCode = "413", description = "File too large")
     })
     @PreAuthorize("hasAnyRole('ADMIN', 'INTERNAL', 'EXTERNAL')")
