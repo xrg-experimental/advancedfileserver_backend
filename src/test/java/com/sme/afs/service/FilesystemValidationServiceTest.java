@@ -66,15 +66,15 @@ class FilesystemValidationServiceTest {
     void validateFilesystem_WhenAllValidationsPassed_ShouldReturnSuccess() throws IOException {
         // Arrange
         when(blobUrlProperties.getTempDirectory()).thenReturn(tempDir.toString());
-        HardLinkManager hardLinkManager = new HardLinkManager();
-        FilesystemValidationService validationService = new FilesystemValidationService(blobUrlProperties, hardLinkManager);
+        HardLinkManager hardLinkManagerLocal = new HardLinkManager();
+        FilesystemValidationService validationServiceLocal = new FilesystemValidationService(blobUrlProperties, hardLinkManagerLocal);
 
         // Create test files for hard link validation
         Path testFile = tempDir.resolve("test-file");
         Files.write(testFile, "test content".getBytes());
 
         // Act
-        FilesystemValidationService.ValidationResult result = validationService.validateFilesystem();
+        FilesystemValidationService.ValidationResult result = validationServiceLocal.validateFilesystem();
 
         // Assert
         assertThat(result.isValid()).isTrue();
