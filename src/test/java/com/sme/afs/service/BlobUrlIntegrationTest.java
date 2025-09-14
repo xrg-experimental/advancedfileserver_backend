@@ -9,8 +9,7 @@ import org.junit.jupiter.api.io.TempDir;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.Duration;
-import java.time.OffsetDateTime;
+import java.time.*;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -22,6 +21,7 @@ class BlobUrlIntegrationTest {
 
     private TokenService tokenService;
     private HardLinkManager hardLinkManager;
+    private OffsetDateTime fixedNow;
 
     @TempDir
     Path tempDir;
@@ -35,8 +35,13 @@ class BlobUrlIntegrationTest {
         blobUrlProperties.setTokenLength(32);
         blobUrlProperties.setMaxConcurrentUrls(1000L);
 
+        // Use a fixed clock to avoid flakiness in time-based assertions
+        // Fixed clock for deterministic time in tests
+        Clock fixedClock = Clock.fixed(Instant.parse("2025-01-01T00:00:00Z"), ZoneOffset.UTC);
+        fixedNow = OffsetDateTime.ofInstant(fixedClock.instant(), ZoneOffset.UTC);
+
         // Initialize services
-        tokenService = new TokenService(blobUrlProperties);
+        tokenService = new TokenService(blobUrlProperties, fixedClock);
         hardLinkManager = new HardLinkManager();
     }
 
@@ -143,32 +148,32 @@ class BlobUrlIntegrationTest {
                 .filename("file.txt")
                 .contentType("text/plain")
                 .fileSize(1024L)
-                .createdAt(OffsetDateTime.now())
-                .expiresAt(OffsetDateTime.now().plusHours(1))
+                .createdAt(fixedNow)
+                .expiresAt(fixedNow.plusHours(1))
                 .createdBy("testuser")
                 .build();
         
-        assertThat(validBlobUrl.isExpiredAt(OffsetDateTime.now())).isFalse();
+        assertThat(validBlobUrl.isExpiredAt(fixedNow)).isFalse();
         assertThat(validBlobUrl.isExpiryAfterCreation()).isTrue();
         
         // Test expiration
         BlobUrl expiredBlobUrl = BlobUrl.builder()
-                .expiresAt(OffsetDateTime.now().minusHours(1))
+                .expiresAt(fixedNow.minusHours(1))
                 .build();
         
-        assertThat(expiredBlobUrl.isExpiredAt(OffsetDateTime.now())).isTrue();
+        assertThat(expiredBlobUrl.isExpiredAt(fixedNow)).isTrue();
     }
 
     @Test
     void tokenService_ShouldHandleExpirationChecks() {
         BlobUrl activeBlobUrl = BlobUrl.builder()
                 .token("active-token")
-                .expiresAt(OffsetDateTime.now().plusHours(1))
+                .expiresAt(fixedNow.plusHours(1))
                 .build();
         
         BlobUrl expiredBlobUrl = BlobUrl.builder()
                 .token("expired-token")
-                .expiresAt(OffsetDateTime.now().minusHours(1))
+                .expiresAt(fixedNow.minusHours(1))
                 .build();
         
         assertThat(tokenService.isTokenExpired(activeBlobUrl)).isFalse();
