@@ -163,6 +163,11 @@ public class BlobUrlController {
                 is.skipNBytes(start);
             } catch (java.io.EOFException eof) {
                 // Defensive: if underlying stream shorter than expected, return 416
+                try {
+                    is.close();
+                } catch (java.io.IOException ignoreClose) {
+                    /* ignore */
+                }
                 return ResponseEntity.status(416)
                         .header(HttpHeaders.CONTENT_RANGE, "bytes */" + fileSize)
                         .build();
