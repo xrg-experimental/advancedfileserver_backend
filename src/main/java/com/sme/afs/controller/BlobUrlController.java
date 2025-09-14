@@ -37,6 +37,15 @@ public class BlobUrlController {
     private final CleanupScheduler cleanupScheduler;
     private final FilesystemValidationService filesystemValidationService;
 
+    /* TODO: Reject or confine absolute paths from untrusted requests (critical)
+     *
+     *  Controller sanitizes only for logging but forwards the raw filePath to blobUrlService.createBlobUrl. BlobUrlService delegates relative paths to FileService (which uses toRealPath/validatePath against rootLocation), but absolute paths are normalized and only existence-checked—allowing callers to reference files outside the shared root.
+     *
+     *  Fix: refuse or canonicalize+constrain absolute paths before any filesystem/hard-link operations. In BlobUrlService.getOriginalFilePath(...) for p.isAbsolute(), call p.toRealPath(LinkOption.NOFOLLOW_LINKS) and assert the canonical path startsWith the configured shared root (FileService.rootLocation / shared-folder base). If not, throw a validation AfsException / return 400.
+     *  Alternative: reject absolute paths at the controller boundary for unprivileged users and document/allow only for trusted contexts.
+     *  Relevant locations: src/main/java/com/sme/afs/controller/BlobUrlController.java (create endpoint), src/main/java/com/sme/afs/service/BlobUrlService.java (createBlobUrl + getOriginalFilePath), src/main/java/com/sme/afs/service/FileService.java (getAbsolutePath / validatePath), src/main/java/com/sme/afs/service/HardLinkManager.java (source toRealPath already used—do not rely on it as the only guard).
+     *
+     */
     @PostMapping("/create")
     @Operation(summary = "Create temporary download URL", 
                description = "Creates a temporary download URL for a file using hard links")
