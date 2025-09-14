@@ -140,6 +140,7 @@ public class BlobUrlService {
             }
 
             // Check concurrent URL limits early to avoid unnecessary resource loading
+            // otherwise unspecific error messages occur
             validateConcurrentLimits();
 
             // Get the actual file path from FileService
