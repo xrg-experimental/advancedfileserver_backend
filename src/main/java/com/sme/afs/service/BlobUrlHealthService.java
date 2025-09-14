@@ -45,10 +45,10 @@ public class BlobUrlHealthService {
      */
     public HealthStatus performHealthCheck() {
         log.debug("Performing blob URL system health check");
-        
+
         HealthStatus.HealthStatusBuilder builder = HealthStatus.builder();
         boolean overallHealthy = true;
-        
+
         try {
             // Check database connectivity and basic queries
             DatabaseHealth dbHealth = checkDatabaseHealth();
@@ -56,49 +56,97 @@ public class BlobUrlHealthService {
             if (!dbHealth.isHealthy()) {
                 overallHealthy = false;
             }
-            
+
             // Check filesystem health
             FilesystemHealth fsHealth = checkFilesystemHealth();
             builder.filesystemHealth(fsHealth);
             if (!fsHealth.isHealthy()) {
                 overallHealthy = false;
             }
-            
-            // Check cleanup system health
-            CleanupHealth cleanupHealth = checkCleanupHealth();
+
+            // Get operational metrics (includes file count)
+            OperationalMetrics metrics = getOperationalMetrics();
+            builder.operationalMetrics(metrics);
+
+            // Check cleanup system health (reusing metrics)
+            CleanupHealth cleanupHealth = checkCleanupHealth(metrics);
             builder.cleanupHealth(cleanupHealth);
             if (!cleanupHealth.isHealthy()) {
                 overallHealthy = false;
             }
-            
-            // Get operational metrics
-            OperationalMetrics metrics = getOperationalMetrics();
-            builder.operationalMetrics(metrics);
-            
+
             // Check for warning conditions
             WarningConditions warnings = checkWarningConditions(metrics);
             builder.warningConditions(warnings);
-            
+
             builder.overallHealthy(overallHealthy);
             builder.checkTimestamp(OffsetDateTime.now());
-            
+
             HealthStatus status = builder.build();
-            
+
             if (overallHealthy) {
                 log.debug("Blob URL system health check completed: HEALTHY");
             } else {
-                log.warn("Blob URL system health check completed: UNHEALTHY - {}", 
+                log.warn("Blob URL system health check completed: UNHEALTHY - {}",
                         getUnhealthyReasons(status));
             }
-            
+
             return status;
-            
+
         } catch (Throwable e) {
             log.error("Error during health check", e);
             return HealthStatus.builder()
                     .overallHealthy(false)
                     .checkTimestamp(OffsetDateTime.now())
                     .error("Health check failed: " + e.getMessage())
+                    .build();
+        }
+    }
+
+    /**
+     * Checks cleanup system health using provided operational metrics.
+     */
+    private CleanupHealth checkCleanupHealth(OperationalMetrics metrics) {
+        try {
+            CleanupScheduler.CleanupStats stats = cleanupScheduler.getCleanupStats();
+
+            // Check for potential issues
+            boolean healthy = true;
+            StringBuilder issues = new StringBuilder();
+
+            if (!stats.isCleanupEnabled()) {
+                healthy = false;
+                issues.append("Automatic cleanup is disabled; ");
+            }
+
+            if (stats.getExpiredUrls() > 100) {
+                healthy = false;
+                issues.append("High number of expired URLs (").append(stats.getExpiredUrls()).append("); ");
+            }
+
+            // Check for orphaned files using metrics (files in temp dir but not active in database)
+            long orphanedFiles = metrics.getFilesInTempDirectory() - metrics.getActiveUrls();
+            if (orphanedFiles > 10) {
+                healthy = false;
+                issues.append("Potential orphaned files (").append(orphanedFiles).append("); ");
+            }
+
+            String message = healthy ? "Cleanup system operating normally" : issues.toString();
+
+            return CleanupHealth.builder()
+                    .healthy(healthy)
+                    .cleanupEnabled(stats.isCleanupEnabled())
+                    .expiredUrlCount(stats.getExpiredUrls())
+                    .filesInTempDirectory(metrics.getFilesInTempDirectory())
+                    .cleanupInterval(stats.getCleanupInterval())
+                    .message(message)
+                    .build();
+
+        } catch (Exception e) {
+            log.error("Cleanup health check failed", e);
+            return CleanupHealth.builder()
+                    .healthy(false)
+                    .message("Cleanup health check failed: " + e.getMessage())
                     .build();
         }
     }
@@ -179,62 +227,6 @@ public class BlobUrlHealthService {
             return FilesystemHealth.builder()
                     .healthy(false)
                     .message("Filesystem health check failed: " + e.getMessage())
-                    .build();
-        }
-    }
-
-    /**
-     * Checks cleanup system health.
-     */
-    private CleanupHealth checkCleanupHealth() {
-        try {
-            CleanupScheduler.CleanupStats stats = cleanupScheduler.getCleanupStats();
-            
-            // Check for potential issues
-            boolean healthy = true;
-            StringBuilder issues = new StringBuilder();
-            
-            if (!stats.isCleanupEnabled()) {
-                healthy = false;
-                issues.append("Automatic cleanup is disabled; ");
-            }
-            
-            if (stats.getExpiredUrls() > 100) {
-                healthy = false;
-                issues.append("High number of expired URLs (").append(stats.getExpiredUrls()).append("); ");
-            }
-            
-            // Check for orphaned files using raw filesystem count
-            long totalFiles = 0;
-            try (DirectoryStream<Path> stream = Files.newDirectoryStream(Paths.get(blobUrlProperties.getTempDirectory()))) {
-                for (Path p : stream) {
-                    if (Files.isRegularFile(p)) totalFiles++;
-                }
-            } catch (IOException e) {
-                log.warn("Failed to count files for orphan detection", e);
-            }
-            long orphanedFiles = Math.max(0, totalFiles - stats.getActiveUrls());
-            if (orphanedFiles > 10) {
-                healthy = false;
-                issues.append("Potential orphaned files (").append(orphanedFiles).append("); ");
-            }
-            
-            String message = healthy ? "Cleanup system operating normally" : issues.toString();
-            
-            return CleanupHealth.builder()
-                    .healthy(healthy)
-                    .cleanupEnabled(stats.isCleanupEnabled())
-                    .expiredUrlCount(stats.getExpiredUrls())
-                    .filesInTempDirectory(stats.getFilesInTempDirectory())
-                    .cleanupInterval(stats.getCleanupInterval())
-                    .message(message)
-                    .build();
-                    
-        } catch (Exception e) {
-            log.error("Cleanup health check failed", e);
-            return CleanupHealth.builder()
-                    .healthy(false)
-                    .message("Cleanup health check failed: " + e.getMessage())
                     .build();
         }
     }
