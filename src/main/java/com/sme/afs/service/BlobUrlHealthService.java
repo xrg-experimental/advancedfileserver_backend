@@ -125,7 +125,7 @@ public class BlobUrlHealthService {
             }
 
             // Check for orphaned files using metrics (files in temp dir but not active in the database)
-            long orphanedFiles = metrics.getFilesInTempDirectory() - metrics.getActiveUrls();
+            long orphanedFiles = Math.max(0, metrics.getFilesInTempDirectory() - metrics.getActiveUrls());
             if (orphanedFiles > 10) {
                 healthy = false;
                 issues.append("Potential orphaned files (").append(orphanedFiles).append("); ");
