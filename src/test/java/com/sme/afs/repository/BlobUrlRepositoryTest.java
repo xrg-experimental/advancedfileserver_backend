@@ -85,8 +85,8 @@ class BlobUrlRepositoryTest {
 
     @Test
     void testBlobUrlIsExpiredMethod() {
-        // Use real current time to verify isExpired() which relies on system clock
-        OffsetDateTime realNow = OffsetDateTime.now();
+        // Use fixedNow to verify isExpiredAt(referenceTime) deterministically
+        OffsetDateTime realNow = fixedNow;
         BlobUrl active = BlobUrl.builder()
                 .token("tmp-active")
                 .originalPath("/tmp/original")
