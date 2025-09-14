@@ -107,7 +107,7 @@ public class BlobUrl {
         if (expiresAt == null || referenceTime == null) {
             return false;
         }
-        return referenceTime.isAfter(expiresAt);
+        return !OffsetDateTime.now().isBefore(expiresAt);
     }
 
     @jakarta.validation.constraints.AssertTrue(message = "expiresAt must be after createdAt")
