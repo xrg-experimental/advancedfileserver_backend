@@ -98,7 +98,7 @@ public class TokenService {
         }
         
         boolean expired = blobUrl.isExpiredAt(OffsetDateTime.now(clock));
-        log.debug("Token {} expiration check: {}", blobUrl.getToken(), expired ? "EXPIRED" : "ACTIVE");
+        log.debug("Token {} expiration check: {}", maskToken(blobUrl.getToken()), expired ? "EXPIRED" : "ACTIVE");
         return expired;
     }
 
@@ -143,5 +143,10 @@ public class TokenService {
         if (len < 16) {
             throw new IllegalStateException("blobUrl.tokenLength must be >= 16 bytes");
         }
+    }
+
+    private static String maskToken(String token) {
+        if (token == null || token.length() < 6) return "****";
+        return token.substring(0, 3) + "..." + token.substring(token.length() - 3);
     }
 }
