@@ -133,6 +133,9 @@ public class BlobUrlService {
                 throw new FileNotFoundException("Cannot create blob URL for directory: " + filePath);
             }
 
+            // Check concurrent URL limits early to avoid unnecessary resource loading
+            validateConcurrentLimits();
+
             // Get the actual file path from FileService
             originalPath = getOriginalFilePath(filePath);
         }
