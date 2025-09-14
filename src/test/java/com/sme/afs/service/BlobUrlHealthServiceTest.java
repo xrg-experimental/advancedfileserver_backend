@@ -112,6 +112,7 @@ class BlobUrlHealthServiceTest {
     @Test
     void performHealthCheck_WhenCleanupUnhealthy_ShouldReturnUnhealthyStatus() {
         // Arrange
+        when(blobUrlProperties.getTempDirectory()).thenReturn(tempDir.toString());
         setupHealthyDatabaseMocks();
         setupHealthyFilesystemMocks();
         when(cleanupScheduler.getCleanupStats())

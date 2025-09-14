@@ -204,8 +204,16 @@ public class BlobUrlHealthService {
                 issues.append("High number of expired URLs (").append(stats.getExpiredUrls()).append("); ");
             }
             
-            // Check for orphaned files (files in temp dir but not in database)
-            long orphanedFiles = stats.getFilesInTempDirectory() - stats.getActiveUrls();
+            // Check for orphaned files using raw filesystem count
+            long totalFiles = 0;
+            try (DirectoryStream<Path> stream = Files.newDirectoryStream(Paths.get(blobUrlProperties.getTempDirectory()))) {
+                for (Path p : stream) {
+                    if (Files.isRegularFile(p)) totalFiles++;
+                }
+            } catch (IOException e) {
+                log.warn("Failed to count files for orphan detection", e);
+            }
+            long orphanedFiles = Math.max(0, totalFiles - stats.getActiveUrls());
             if (orphanedFiles > 10) {
                 healthy = false;
                 issues.append("Potential orphaned files (").append(orphanedFiles).append("); ");
