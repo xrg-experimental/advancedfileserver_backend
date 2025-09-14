@@ -32,7 +32,6 @@ import java.util.stream.Collectors;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private static final String BEARER_PREFIX = "Bearer ";
-    private static final MediaType PROBLEM_JSON = MediaType.valueOf("application/problem+json");
     private final JwtService jwtService;
     private final SessionService sessionService;
     private final ObjectMapper objectMapper;
@@ -130,7 +129,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private void respondWithProblemDetails(HttpServletResponse response, ErrorCode errorCode, String message) throws IOException {
         ProblemResponse problemResponse = createProblem(errorCode, message);
         response.setStatus(errorCode.status.value());
-        response.setContentType(PROBLEM_JSON.toString());
+        response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
         response.getWriter().write(objectMapper.writeValueAsString(problemResponse));
     }
 }

@@ -5,7 +5,7 @@ import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 /**
  * Entity representing a temporary blob URL for file downloads.
@@ -82,13 +82,13 @@ public class BlobUrl {
      * Timestamp when the blob URL was created
      */
     @Column(name = "created_at", nullable = false)
-    private LocalDateTime createdAt;
+    private OffsetDateTime createdAt;
 
     /**
      * Timestamp when the blob URL expires
      */
     @Column(name = "expires_at", nullable = false)
-    private LocalDateTime expiresAt;
+    private OffsetDateTime expiresAt;
 
     /**
      * Username of the user who created this blob URL
@@ -100,24 +100,18 @@ public class BlobUrl {
     private String createdBy;
 
     /**
-     * Check if this blob URL has expired
+     * Check if this blob URL has expired at the given reference time.
+     * This entity does not access the system clock to remain deterministic in tests.
      */
-    public boolean isExpired() {
-        return LocalDateTime.now().isAfter(expiresAt);
+    public boolean isExpiredAt(OffsetDateTime referenceTime) {
+        if (expiresAt == null || referenceTime == null) {
+            return false;
+        }
+        return !referenceTime.isBefore(expiresAt);
     }
 
     @jakarta.validation.constraints.AssertTrue(message = "expiresAt must be after createdAt")
     public boolean isExpiryAfterCreation() {
         return createdAt == null || expiresAt == null || expiresAt.isAfter(createdAt);
-    }
-
-    /**
-     * Set creation timestamp to current time
-     */
-    @PrePersist
-    protected void onCreate() {
-        if (createdAt == null) {
-            createdAt = LocalDateTime.now();
-        }
     }
 }

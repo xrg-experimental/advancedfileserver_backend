@@ -19,7 +19,7 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    private static final MediaType PROBLEM_JSON = MediaType.valueOf("application/problem+json");
+    private static final MediaType PROBLEM_JSON = MediaType.valueOf(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
 
     private ProblemResponse createProblem(ErrorCode errorCode, String detail) {
         String correlationId = MDC.get(CorrelationIdFilter.CORRELATION_ID);

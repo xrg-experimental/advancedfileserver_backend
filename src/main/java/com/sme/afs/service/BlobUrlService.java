@@ -1,12 +1,14 @@
 package com.sme.afs.service;
 
 import com.sme.afs.config.BlobUrlProperties;
+import com.sme.afs.dto.BlobUrlResponse;
 import com.sme.afs.dto.FileInfoResponse;
 import com.sme.afs.error.ErrorCode;
-import com.sme.afs.exception.AfsException;
+import com.sme.afs.exception.*;
 import com.sme.afs.model.BlobUrl;
 import com.sme.afs.repository.BlobUrlRepository;
-import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
@@ -19,7 +21,8 @@ import java.net.MalformedURLException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.Clock;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -29,7 +32,6 @@ import java.util.Optional;
  * Handles creation, validation, and retrieval of temporary download URLs using hard links.
  */
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class BlobUrlService {
 
@@ -38,9 +40,43 @@ public class BlobUrlService {
     private final HardLinkManager hardLinkManager;
     private final FileService fileService;
     private final BlobUrlProperties blobUrlProperties;
+    private final Clock clock;
+
+    @Autowired
+    public BlobUrlService(BlobUrlRepository blobUrlRepository,
+                          TokenService tokenService,
+                          HardLinkManager hardLinkManager,
+                          FileService fileService,
+                          BlobUrlProperties blobUrlProperties,
+                          Clock clock) {
+        this.blobUrlRepository = blobUrlRepository;
+        this.tokenService = tokenService;
+        this.hardLinkManager = hardLinkManager;
+        this.fileService = fileService;
+        this.blobUrlProperties = blobUrlProperties;
+        this.clock = clock;
+    }
 
     @Autowired(required = false)
     private RateLimitService rateLimitService;
+
+    /**
+     * Creates a temporary blob URL for the specified file.
+     * Creates a hard link to the original file and returns URL information.
+     * This overload gets the current user from the security context.
+     *
+     * @param filePath Path to the file (relative to FileService root)
+     * @return BlobUrlResponse with download information
+     * @throws FileNotFoundException if file validation fails
+     * @throws LinkCreationFailedException if hard link creation fails
+     */
+    @Transactional
+    public BlobUrlResponse createBlobUrl(String filePath) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String createdBy = auth != null ? auth.getName() : "anonymous";
+        BlobUrl blobUrl = createBlobUrl(filePath, createdBy);
+        return convertToResponse(blobUrl);
+    }
 
     /**
      * Creates a temporary blob URL for the specified file.
@@ -49,16 +85,26 @@ public class BlobUrlService {
      * @param filePath Path to the file (relative to FileService root)
      * @param createdBy Username of the user creating the blob URL
      * @return BlobUrl entity with download information
-     * @throws AfsException if file validation or hard link creation fails
+     * @throws FileNotFoundException if file validation fails
+     * @throws LinkCreationFailedException if hard link creation fails
      */
     @Transactional
     public BlobUrl createBlobUrl(String filePath, String createdBy) {
         log.info("Creating blob URL for file: {} by user: {}", filePath, createdBy);
 
         // Validate file exists and gets metadata through FileService
-        FileInfoResponse fileInfo = fileService.getFileInfo(filePath);
+        FileInfoResponse fileInfo;
+        try {
+            fileInfo = fileService.getFileInfo(filePath);
+        } catch (AfsException e) {
+            if (e.getErrorCode() == ErrorCode.NOT_FOUND) {
+                throw new FileNotFoundException(filePath, e);
+            }
+            throw e;
+        }
+        
         if (fileInfo.isDirectory()) {
-            throw new AfsException(ErrorCode.VALIDATION_FAILED, "Cannot create blob URL for directory");
+            throw new FileNotFoundException("Cannot create blob URL for directory: " + filePath);
         }
 
         // Check concurrent URL limits
@@ -70,12 +116,28 @@ public class BlobUrlService {
         // Generate secure token and create the hard link path
         String token = tokenService.generateSecureToken();
         Path tempDir = Paths.get(blobUrlProperties.getTempDirectory());
+        // Token must be URL-safe and free of path separators
+        if (!token.matches("^[A-Za-z0-9_-]+$")) {
+            throw new AfsException(ErrorCode.INTERNAL_ERROR, "Invalid token format");
+        }
         Path hardLinkPath = tempDir.resolve(token);
+        if (hardLinkPath.isAbsolute()) {
+            throw new AfsException(ErrorCode.INTERNAL_ERROR, "Invalid token path segment");
+        }
 
         try {
             // Ensure temp directory exists (createDirectories is idempotent)
             Files.createDirectories(tempDir);
             log.debug("Ensured temporary directory exists: {}", tempDir);
+
+            // Ensure original and temp directories are on the same filesystem
+            try {
+                if (!Files.getFileStore(originalPath).equals(Files.getFileStore(tempDir))) {
+                    throw new CrossFilesystemException("Temporary directory must reside on the same filesystem as the original file");
+                }
+            } catch (IOException fsInfoEx) {
+                log.warn("Unable to determine filesystem equality; proceeding to attempt hard link");
+            }
 
             // Create the hard link
             hardLinkManager.createHardLink(originalPath, hardLinkPath);
@@ -88,8 +150,8 @@ public class BlobUrlService {
                     .filename(fileInfo.getName())
                     .contentType(fileInfo.getMimeType() != null ? fileInfo.getMimeType() : "application/octet-stream")
                     .fileSize(fileInfo.getSize())
-                    .createdAt(LocalDateTime.now())
-                    .expiresAt(LocalDateTime.now().plus(blobUrlProperties.getDefaultExpiration()))
+                    .createdAt(OffsetDateTime.now(clock))
+                    .expiresAt(OffsetDateTime.now(clock).plus(blobUrlProperties.getDefaultExpiration()))
                     .createdBy(createdBy)
                     .build();
 
@@ -102,12 +164,29 @@ public class BlobUrlService {
             log.error("Failed to create hard link for file: {}", filePath, e);
             // Clean up any partial state
             cleanupFailedCreation(hardLinkPath, token);
-            throw new AfsException(ErrorCode.INTERNAL_ERROR, "Failed to create temporary download link: " + e.getMessage());
+            throw new LinkCreationFailedException("Failed to create temporary download link: " + e.getMessage(), e);
         } catch (Exception e) {
             log.error("Unexpected error creating blob URL for file: {}", filePath, e);
             cleanupFailedCreation(hardLinkPath, token);
-            throw new AfsException(ErrorCode.INTERNAL_ERROR, "Failed to create blob URL");
+            throw new LinkCreationFailedException("Failed to create blob URL", e);
         }
+    }
+
+    /**
+     * Gets the status and metadata of a blob URL by token.
+     * This overload returns a BlobUrlResponse for the controller.
+     *
+     * @param token The blob URL token
+     * @return BlobUrlResponse with status and metadata
+     * @throws TokenInvalidException if token is invalid or expired
+     */
+    @Transactional(readOnly = true)
+    public BlobUrlResponse getBlobUrlStatus(String token) {
+        Optional<BlobUrl> blobUrlOpt = getBlobUrlStatusInternal(token);
+        if (blobUrlOpt.isEmpty()) {
+            throw new TokenInvalidException(token);
+        }
+        return convertToResponse(blobUrlOpt.get());
     }
 
     /**
@@ -117,7 +196,7 @@ public class BlobUrlService {
      * @return Optional containing the BlobUrl if found and valid, empty otherwise
      */
     @Transactional(readOnly = true)
-    public Optional<BlobUrl> getBlobUrlStatus(String token) {
+    public Optional<BlobUrl> getBlobUrlStatusInternal(String token) {
         log.debug("Getting blob URL status for token: {}", token);
 
         if (!tokenService.validateTokenFormat(token)) {
@@ -190,9 +269,9 @@ public class BlobUrlService {
     public Resource validateAndGetFile(String token) {
         log.debug("Validating token and getting file for download: {}", token);
 
-        Optional<BlobUrl> blobUrlOpt = getBlobUrlStatus(token);
+        Optional<BlobUrl> blobUrlOpt = getBlobUrlStatusInternal(token);
         if (blobUrlOpt.isEmpty()) {
-            throw new AfsException(ErrorCode.NOT_FOUND, "Download URL is invalid or expired");
+            throw new TokenInvalidException(token);
         }
 
         BlobUrl blobUrl = blobUrlOpt.get();
@@ -201,14 +280,14 @@ public class BlobUrlService {
         // Verify hard link still exists
         if (!Files.exists(hardLinkPath)) {
             log.error("Hard link file not found: {}", hardLinkPath);
-            throw new AfsException(ErrorCode.NOT_FOUND, "Download file is no longer available");
+            throw new TokenInvalidException("Download file is no longer available");
         }
 
         try {
             Resource resource = new UrlResource(hardLinkPath.toUri());
             if (!resource.exists() || !resource.isReadable()) {
                 log.error("Hard link file is not readable: {}", hardLinkPath);
-                throw new AfsException(ErrorCode.INTERNAL_ERROR, "Download file is not accessible");
+                throw new TokenInvalidException("Download file is no longer available");
             }
 
             log.info("Successfully validated token and prepared file for download: {}", token);
@@ -230,7 +309,7 @@ public class BlobUrlService {
     public int cleanupExpiredUrls() {
         log.debug("Starting cleanup of expired blob URLs");
 
-        LocalDateTime now = LocalDateTime.now();
+        OffsetDateTime now = OffsetDateTime.now(clock);
         List<BlobUrl> expiredUrls = blobUrlRepository.findExpiredUrls(now);
 
         int cleanedCount = 0;
@@ -274,7 +353,7 @@ public class BlobUrlService {
      */
     @Transactional(readOnly = true)
     public List<BlobUrl> getActiveUrlsByUser(String username) {
-        return blobUrlRepository.findActiveUrlsByUser(username, LocalDateTime.now());
+        return blobUrlRepository.findActiveUrlsByUser(username, OffsetDateTime.now(clock));
     }
 
     /**
@@ -284,7 +363,7 @@ public class BlobUrlService {
      */
     @Transactional(readOnly = true)
     public long getActiveUrlCount() {
-        return blobUrlRepository.countActiveUrls(LocalDateTime.now());
+        return blobUrlRepository.countActiveUrls(OffsetDateTime.now(clock));
     }
 
     /**
@@ -295,14 +374,14 @@ public class BlobUrlService {
      */
     @Transactional(readOnly = true)
     public long getActiveUrlCountByUser(String username) {
-        return blobUrlRepository.countActiveUrlsByUser(username, LocalDateTime.now());
+        return blobUrlRepository.countActiveUrlsByUser(username, OffsetDateTime.now(clock));
     }
 
     /**
      * Validates concurrent URL limits to prevent system overload.
      */
     private void validateConcurrentLimits() {
-        long activeCount = blobUrlRepository.countActiveUrls(LocalDateTime.now());
+        long activeCount = blobUrlRepository.countActiveUrls(OffsetDateTime.now(clock));
         if (activeCount >= blobUrlProperties.getMaxConcurrentUrls()) {
             throw new AfsException(ErrorCode.VALIDATION_FAILED, 
                 "Maximum concurrent blob URLs limit reached: " + blobUrlProperties.getMaxConcurrentUrls());
@@ -329,6 +408,28 @@ public class BlobUrlService {
             log.error("Unexpected error resolving file path", e);
             throw new AfsException(ErrorCode.INTERNAL_ERROR, "Failed to process file request");
         }
+    }
+
+    /**
+     * Converts a BlobUrl entity to a BlobUrlResponse DTO.
+     */
+    private BlobUrlResponse convertToResponse(BlobUrl blobUrl) {
+        String status = tokenService.isTokenExpired(blobUrl) ? "expired" : "active";
+
+        String basePath = blobUrlProperties.getDownloadUrlPath();
+        if (!basePath.endsWith("/")) {
+            basePath = basePath + "/";
+        }
+        String encodedToken = java.net.URLEncoder.encode(blobUrl.getToken(), java.nio.charset.StandardCharsets.UTF_8);
+        return BlobUrlResponse.builder()
+                .downloadUrl(basePath + encodedToken)
+                .token(blobUrl.getToken())
+                .filename(blobUrl.getFilename())
+                .fileSize(blobUrl.getFileSize())
+                .contentType(blobUrl.getContentType())
+                .expiresAt(blobUrl.getExpiresAt())
+                .status(status)
+                .build();
     }
 
     /**

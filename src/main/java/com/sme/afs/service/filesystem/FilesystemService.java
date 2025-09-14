@@ -17,6 +17,9 @@ public interface FilesystemService {
 
     /**
      * Get metadata for a specific file or directory
+     * <p>
+     * Unreadable entries are filtered out and the returned list contains no nulls.
+     *
      * @param path Path to the file or directory
      * @return Metadata for the file or directory
      * @throws IOException if metadata cannot be retrieved
@@ -27,14 +30,22 @@ public interface FilesystemService {
      * Resolve a path, handling relative and absolute paths
      * @param basePath Base path for resolution
      * @param pathToResolve Path to resolve
-     * @return Resolved absolute path
+     * @return Resolved normalized path within {@code basePath}
+     * @throws IllegalArgumentException if resolution escapes {@code basePath}
      */
     Path resolvePath(Path basePath, String pathToResolve);
 
     /**
      * Check if a path exists
      * @param path Path to check
-     * @return true if path exists, false otherwise
+     * Notes:
+     * <ul>
+     *   <li>Subject to TOCTOU: existence can change between check and use; callers must handle failures on use.</li>
+     *   <li>Per {@link java.nio.file.Files#exists(Path, java.nio.file.LinkOption...)},
+     *             I/O errors may cause this to return {@code false} indistinguishable from non-existence.</li>
+     *   <li>Symlink handling is implementation-defined; implementations should document whether links are followed.</li>
+     * </ul>
+     * @return true if the path exists at check time; false otherwise
      */
     boolean exists(Path path);
 }

@@ -2,11 +2,13 @@ package com.sme.afs.service;
 
 import com.sme.afs.config.BlobUrlProperties;
 import com.sme.afs.model.BlobUrl;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.security.SecureRandom;
+import java.time.Clock;
+import java.time.OffsetDateTime;
 import java.util.Base64;
 
 /**
@@ -14,13 +16,24 @@ import java.util.Base64;
  * Uses SecureRandom for token generation and URL-safe Base64 encoding.
  */
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class TokenService {
 
     private final BlobUrlProperties blobUrlProperties;
+    private final Clock clock;
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
     private static final Base64.Encoder URL_ENCODER = Base64.getUrlEncoder().withoutPadding();
+
+    @Autowired
+    public TokenService(BlobUrlProperties blobUrlProperties, Clock clock) {
+        this.blobUrlProperties = blobUrlProperties;
+        this.clock = clock;
+    }
+
+    // Backward-compatible constructor for tests and manual instantiation
+    public TokenService(BlobUrlProperties blobUrlProperties) {
+        this(blobUrlProperties, Clock.systemUTC());
+    }
 
     /**
      * Generates a cryptographically secure random token for blob URLs.
@@ -55,13 +68,12 @@ public class TokenService {
         }
 
         // Check length - Base64 encoding of tokenLength bytes should produce a predictable length
-        // Base64 encoding produces 4 characters for every 3 bytes, but we use no padding
-        int expectedMinLength = (blobUrlProperties.getTokenLength() * 4) / 3;
-        int expectedMaxLength = expectedMinLength + 2; // Account for rounding in no-padding encoding
-        
-        if (token.length() < expectedMinLength || token.length() > expectedMaxLength) {
-            log.debug("Token validation failed: invalid length {} (expected {}-{})", 
-                     token.length(), expectedMinLength, expectedMaxLength);
+        int n = blobUrlProperties.getTokenLength();
+        int expectedLength = (n / 3) * 4 + ((n % 3 == 0) ? 0 : (n % 3 + 1));
+
+        if (token.length() != expectedLength) {
+            log.debug("Token validation failed: invalid length {} (expected {})",
+                    token.length(), expectedLength);
             return false;
         }
 
@@ -85,8 +97,8 @@ public class TokenService {
             return true;
         }
         
-        boolean expired = blobUrl.isExpired();
-        log.debug("Token {} expiration check: {}", blobUrl.getToken(), expired ? "EXPIRED" : "ACTIVE");
+        boolean expired = blobUrl.isExpiredAt(OffsetDateTime.now(clock));
+        log.debug("Token {} expiration check: {}", maskToken(blobUrl.getToken()), expired ? "EXPIRED" : "ACTIVE");
         return expired;
     }
 
@@ -131,5 +143,10 @@ public class TokenService {
         if (len < 16) {
             throw new IllegalStateException("blobUrl.tokenLength must be >= 16 bytes");
         }
+    }
+
+    private static String maskToken(String token) {
+        if (token == null || token.length() < 6) return "****";
+        return token.substring(0, 3) + "..." + token.substring(token.length() - 3);
     }
 }
