@@ -255,7 +255,8 @@ public class BlobUrlController {
     public ResponseEntity<java.util.Map<String, Object>> forceCleanupByToken(
             @Parameter(description = "Blob URL token to cleanup", required = true)
             @PathVariable String token) {
-        log.info("Manual cleanup requested for token: {}", token);
+        String tokenPreview = token != null && token.length() > 8 ? token.substring(0, 8) + "…" : token;
+        log.info("Manual cleanup requested for token: {}", tokenPreview);
         boolean success = cleanupScheduler.forceCleanupByToken(token);
         
         java.util.Map<String, Object> result = new java.util.HashMap<>();
