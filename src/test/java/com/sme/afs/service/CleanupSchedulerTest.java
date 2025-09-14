@@ -248,7 +248,7 @@ class CleanupSchedulerTest {
         when(blobUrlProperties.isEnableAutomaticCleanup()).thenReturn(true);
         when(blobUrlProperties.getCleanupInterval()).thenReturn(Duration.ofMinutes(15));
 
-        // Create some files in temp directory
+        // Create some files in temp directory (not as known temp files)
         Files.createFile(tempDir.resolve("file1"));
         Files.createFile(tempDir.resolve("file2"));
         Files.createFile(tempDir.resolve("file3"));
@@ -259,7 +259,7 @@ class CleanupSchedulerTest {
         // Assert
         assertThat(stats.getActiveUrls()).isEqualTo(10L);
         assertThat(stats.getExpiredUrls()).isEqualTo(2L);
-        assertThat(stats.getFilesInTempDirectory()).isEqualTo(3L);
+        assertThat(stats.getFilesInTempDirectory()).isEqualTo(0L); // count only known temp files
         assertThat(stats.getTempDirectoryPath()).isEqualTo(tempDir.toString());
         assertThat(stats.isCleanupEnabled()).isTrue();
         assertThat(stats.getCleanupInterval()).isEqualTo(Duration.ofMinutes(15));
