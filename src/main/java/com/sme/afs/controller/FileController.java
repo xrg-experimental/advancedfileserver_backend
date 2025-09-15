@@ -7,124 +7,219 @@ import com.sme.afs.dto.PathRequest;
 import com.sme.afs.dto.MoveRequest;
 import com.sme.afs.service.FileService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.util.AntPathMatcher;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.HandlerMapping;
+import org.springframework.web.util.UriUtils;
 
+import java.nio.charset.StandardCharsets;
+
+/* TODO: Fix DTO validation and harden FileService path handling (security‑critical)
+ * DTOs: PathRequest and MoveRequest have no validation — add @notblank, @SiZe(max=4096) and a
+ * pattern rejecting control chars; RenameRequest has @notblank but newName must forbid path
+ * separators (no '/' or ''). Files: src/main/java/com/sme/afs/dto/PathRequest.java,
+ * RenameRequest.java, MoveRequest.java.
+ * <p>
+ * FileService: getAbsolutePath() + validatePath() rely on normalize().startsWith(rootLocation)
+ * (catches “..”) but do not canonicalize for most ops — symlink/TOCTOU escapes are possible.
+ * Canonicalize (toRealPath) and assert realPath.startsWith(rootLocation) before any filesystem
+ * read/write; re-check after open/atomic ops. Check callers: createDirectory, delete, listDirectory,
+ * move, rename, store. File: src/main/java/com/sme/afs/service/FileService.java (getAbsolutePath,
+ * validatePath and callers).
+ * <p>
+ * Blob URL handling: BlobUrlService/BlobUrlController accept/handle absolute paths with fragile
+ * string checks
+ * (TODO present). Reject or canonicalize+constrain absolute paths at controller boundary for unprivileged
+ *   callers and assert canonical path is under the shared root before creating hard links.
+ *   Files: src/main/java/com/sme/afs/service/BlobUrlService.java,
+ *          src/main/java/com/sme/afs/controller/BlobUrlController.java.
+ * <p>
+ * Immediate practical risk: missing DTO constraints permit null/empty paths -> NPEs when
+ * controllers call FileService.getAbsolutePath.
+ */
 @RestController
 @RequestMapping("/files")
 @RequiredArgsConstructor
+@Tag(name = "Files", description = "File and directory management operations")
+@SecurityRequirement(name = "bearerAuth")
 public class FileController {
     private final FileService fileService;
 
     @PostMapping("/list")
-    @Operation(summary = "List directory contents")
+    @Operation(summary = "List directory contents", 
+               description = "Retrieves the contents of a directory including files and subdirectories")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Successfully retrieved directory listing"),
+        @ApiResponse(responseCode = "400", description = "Invalid request payload"),
+        @ApiResponse(responseCode = "403", description = "Access denied"),
         @ApiResponse(responseCode = "404", description = "Directory not found")
     })
+    @PreAuthorize("hasAnyRole('ADMIN', 'INTERNAL', 'EXTERNAL')")
     public ResponseEntity<FileListResponse> listDirectory(
-            @RequestBody PathRequest request) {
+            @Valid @RequestBody PathRequest request) {
         return ResponseEntity.ok(fileService.listDirectory(request.getPath()));
     }
 
     @PostMapping("/info")
-    @Operation(summary = "Get file/directory info")
+    @Operation(summary = "Get file/directory info", 
+               description = "Retrieves detailed information about a file or directory")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Successfully retrieved file info"),
+        @ApiResponse(responseCode = "400", description = "Invalid request payload"),
+        @ApiResponse(responseCode = "403", description = "Access denied"),
         @ApiResponse(responseCode = "404", description = "File not found")
     })
+    @PreAuthorize("hasAnyRole('ADMIN', 'INTERNAL', 'EXTERNAL')")
     public ResponseEntity<FileInfoResponse> getFileInfo(
-            @RequestBody PathRequest request) {
+            @Valid @RequestBody PathRequest request) {
         return ResponseEntity.ok(fileService.getFileInfo(request.getPath()));
     }
 
     @PostMapping("/create")
-    @Operation(summary = "Create directory")
+    @Operation(summary = "Create directory", 
+               description = "Creates a new directory at the specified path")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Directory created successfully"),
-        @ApiResponse(responseCode = "409", description = "Directory already exists")
+        @ApiResponse(responseCode = "201", description = "Directory created successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid request payload"),
+        @ApiResponse(responseCode = "403", description = "Access denied"),
+        @ApiResponse(responseCode = "409", description = "Directory already exists"),
     })
+    @PreAuthorize("hasAnyRole('ADMIN', 'INTERNAL', 'EXTERNAL')")
     public ResponseEntity<FileInfoResponse> createDirectory(
-            @RequestBody PathRequest request) {
-        return ResponseEntity.ok(fileService.createDirectory(request.getPath()));
+            @Valid @RequestBody PathRequest request) {
+        return ResponseEntity.status(201).body(fileService.createDirectory(request.getPath()));
     }
 
-    @PostMapping("/delete")
-    @Operation(summary = "Delete file/directory")
+    @DeleteMapping("/delete")
+    @Operation(summary = "Delete file/directory", 
+               description = "Deletes a file or directory at the specified path")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Successfully deleted"),
+        @ApiResponse(responseCode = "204", description = "Successfully deleted"),
+        @ApiResponse(responseCode = "400", description = "Invalid request payload"),
+        @ApiResponse(responseCode = "403", description = "Access denied"),
         @ApiResponse(responseCode = "404", description = "File not found")
     })
+    @PreAuthorize("hasAnyRole('ADMIN', 'INTERNAL', 'EXTERNAL')")
     public ResponseEntity<Void> delete(
-            @RequestBody PathRequest request) {
+            @Valid @RequestBody PathRequest request) {
         fileService.delete(request.getPath());
-        return ResponseEntity.ok().build();
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/rename")
-    @Operation(summary = "Rename file/directory")
+    @Operation(summary = "Rename file/directory", 
+               description = "Renames a file or directory to a new name")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Successfully renamed"),
+        @ApiResponse(responseCode = "400", description = "Invalid request payload"),
         @ApiResponse(responseCode = "404", description = "File not found"),
+        @ApiResponse(responseCode = "403", description = "Access denied"),
         @ApiResponse(responseCode = "409", description = "Target name already exists")
     })
+    @PreAuthorize("hasAnyRole('ADMIN', 'INTERNAL', 'EXTERNAL')")
     public ResponseEntity<FileInfoResponse> rename(
-            @RequestBody RenameRequest request) {
+            @Valid @RequestBody RenameRequest request) {
         return ResponseEntity.ok(fileService.rename(request.getPath(), request.getNewName()));
     }
 
     @PostMapping("/move")
-    @Operation(summary = "Move file/directory")
+    @Operation(summary = "Move file/directory", 
+               description = "Moves a file or directory from source to target path")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Successfully moved"),
+        @ApiResponse(responseCode = "400", description = "Invalid request payload"),
+        @ApiResponse(responseCode = "403", description = "Access denied"),
         @ApiResponse(responseCode = "404", description = "Source not found"),
         @ApiResponse(responseCode = "409", description = "Target already exists")
     })
+    @PreAuthorize("hasAnyRole('ADMIN', 'INTERNAL', 'EXTERNAL')")
     public ResponseEntity<FileInfoResponse> move(
-            @RequestBody MoveRequest request) {
+            @Valid @RequestBody MoveRequest request) {
         return ResponseEntity.ok(fileService.move(request.getSourcePath(), request.getTargetPath()));
     }
 
     @GetMapping("/download/**")
-    @Operation(summary = "Download file")
+    @Operation(summary = "Download file", 
+               description = "Downloads a file directly through the API (deprecated - use blob URLs for better performance)",
+               deprecated = true)
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "File downloaded successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid request payload"),
+        @ApiResponse(responseCode = "403", description = "Access denied"),
         @ApiResponse(responseCode = "404", description = "File not found")
     })
+    @PreAuthorize("hasAnyRole('ADMIN', 'INTERNAL', 'EXTERNAL')")
     public ResponseEntity<Resource> download(HttpServletRequest request) {
-        String path = extractPathFromRequest(request);
-        Resource resource = fileService.loadAsResource(path);
-        
+        final String path = extractPathFromRequest(request);
+        if (path.isBlank()) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.BAD_REQUEST, "Missing download path");
+        }
+        final Resource resource = fileService.loadAsResource(path);
+        final org.springframework.http.ContentDisposition cd =
+                org.springframework.http.ContentDisposition.attachment()
+                        .filename(resource.getFilename(), java.nio.charset.StandardCharsets.UTF_8)
+                        .build();
         return ResponseEntity.ok()
-            .contentType(MediaType.APPLICATION_OCTET_STREAM)
-            .header(HttpHeaders.CONTENT_DISPOSITION, 
-                "attachment; filename=\"" + resource.getFilename() + "\"")
-            .body(resource);
+                .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .header(HttpHeaders.CONTENT_DISPOSITION, cd.toString())
+                .body(resource);
     }
 
-    @PostMapping("/upload")
-    @Operation(summary = "Upload file")
+    /* TODO: Map upload-size errors to 413 (Payload Too Large) — add handler in GlobalExceptionHandler.java
+     *
+     * application.yml already sets spring.servlet.multipart.max-file-size and max-request-size = 100MB,
+     * but src/main/java/com/sme/afs/exception/GlobalExceptionHandler.java has no handler for
+     * MaxUploadSizeExceededException/MultipartException and will fall back to the generic 500 handler.
+     * Add an @ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException.class)
+     * (and optionally MultipartException) in GlobalExceptionHandler to return HTTP 413 with the
+     * ProblemResponse body (reuse or add an appropriate ErrorCode for "file too large"); ensure the
+     * handler logs safely and does not leak file contents or sensitive info.
+     */
+    @PostMapping(path = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "Upload file", 
+               description = "Uploads a file to the specified path")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "File uploaded successfully"),
-        @ApiResponse(responseCode = "409", description = "File already exists")
+        @ApiResponse(responseCode = "400", description = "Invalid request payload"),
+        @ApiResponse(responseCode = "403", description = "Access denied"),
+        @ApiResponse(responseCode = "409", description = "File already exists"),
+        @ApiResponse(responseCode = "413", description = "File too large")
     })
+    @PreAuthorize("hasAnyRole('ADMIN', 'INTERNAL', 'EXTERNAL')")
     public ResponseEntity<FileInfoResponse> upload(
-            @RequestParam("file") MultipartFile file,
-            @RequestParam("path") String path) {
+            @Parameter(description = "File to upload", required = true)
+            @RequestParam("file") @NotNull MultipartFile file,
+            @Parameter(description = "Target path for the file", required = true)
+            @RequestParam("path") @NotBlank @Size(max = 4096) String path) {
         return ResponseEntity.ok(fileService.store(file, path));
     }
 
     private String extractPathFromRequest(HttpServletRequest request) {
-        String requestURI = request.getRequestURI();
-        String downloadPrefix = "/api/files/download/";
-        return requestURI.substring(requestURI.indexOf(downloadPrefix) + downloadPrefix.length());
+        final String pattern =
+                (String) request.getAttribute(HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE);    // "/files/download/**"
+        final String withinMapping =
+                (String) request.getAttribute(HandlerMapping.PATH_WITHIN_HANDLER_MAPPING_ATTRIBUTE);
+        final String extracted = new AntPathMatcher().extractPathWithinPattern(pattern, withinMapping);
+        return extracted.isBlank()
+                ? ""
+                : UriUtils.decode(extracted, StandardCharsets.UTF_8);
     }
 }

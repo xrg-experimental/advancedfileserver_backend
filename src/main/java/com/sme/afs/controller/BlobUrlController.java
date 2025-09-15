@@ -3,6 +3,9 @@ package com.sme.afs.controller;
 import com.sme.afs.dto.BlobUrlCreateRequest;
 import com.sme.afs.dto.BlobUrlResponse;
 import com.sme.afs.service.BlobUrlService;
+import com.sme.afs.service.BlobUrlHealthService;
+import com.sme.afs.service.CleanupScheduler;
+import com.sme.afs.service.FilesystemValidationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -30,7 +33,19 @@ import org.springframework.web.bind.annotation.*;
 public class BlobUrlController {
     
     private final BlobUrlService blobUrlService;
+    private final BlobUrlHealthService blobUrlHealthService;
+    private final CleanupScheduler cleanupScheduler;
+    private final FilesystemValidationService filesystemValidationService;
 
+    /* TODO: Reject or confine absolute paths from untrusted requests (critical)
+     *
+     *  Controller sanitizes only for logging but forwards the raw filePath to blobUrlService.createBlobUrl. BlobUrlService delegates relative paths to FileService (which uses toRealPath/validatePath against rootLocation), but absolute paths are normalized and only existence-checked—allowing callers to reference files outside the shared root.
+     *
+     *  Fix: refuse or canonicalize+constrain absolute paths before any filesystem/hard-link operations. In BlobUrlService.getOriginalFilePath(...) for p.isAbsolute(), call p.toRealPath(LinkOption.NOFOLLOW_LINKS) and assert the canonical path startsWith the configured shared root (FileService.rootLocation / shared-folder base). If not, throw a validation AfsException / return 400.
+     *  Alternative: reject absolute paths at the controller boundary for unprivileged users and document/allow only for trusted contexts.
+     *  Relevant locations: src/main/java/com/sme/afs/controller/BlobUrlController.java (create endpoint), src/main/java/com/sme/afs/service/BlobUrlService.java (createBlobUrl + getOriginalFilePath), src/main/java/com/sme/afs/service/FileService.java (getAbsolutePath / validatePath), src/main/java/com/sme/afs/service/HardLinkManager.java (source toRealPath already used—do not rely on it as the only guard).
+     *
+     */
     @PostMapping("/create")
     @Operation(summary = "Create temporary download URL", 
                description = "Creates a temporary download URL for a file using hard links")
@@ -40,7 +55,7 @@ public class BlobUrlController {
         @ApiResponse(responseCode = "404", description = "File not found"),
         @ApiResponse(responseCode = "500", description = "Hard link creation failed or filesystem unsupported")
     })
-    @PreAuthorize("hasRole('USER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INTERNAL', 'EXTERNAL')")
     public ResponseEntity<BlobUrlResponse> createBlobUrl(
             @Valid @RequestBody BlobUrlCreateRequest request) {
         String safePath = request.getFilePath() == null ? "" : request.getFilePath().replaceAll("[\\r\\n]", "");
@@ -56,7 +71,7 @@ public class BlobUrlController {
         @ApiResponse(responseCode = "200", description = "Status retrieved successfully"),
         @ApiResponse(responseCode = "404", description = "Token not found or expired")
     })
-    @PreAuthorize("hasRole('USER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INTERNAL', 'EXTERNAL')")
     public ResponseEntity<BlobUrlResponse> getBlobUrlStatus(
             @Parameter(description = "Blob URL token", required = true)
             @PathVariable String token) {
@@ -125,9 +140,8 @@ public class BlobUrlController {
             }
             long count = end - start + 1;
             String contentRange = "bytes " + start + "-" + end + "/" + fileSize;
-            org.springframework.core.io.support.ResourceRegion region =
-                    new org.springframework.core.io.support.ResourceRegion(resource, start, count);
 
+            // Build headers required for a 206 Partial Content response
             HttpHeaders headers = new HttpHeaders();
             headers.add(HttpHeaders.CONTENT_RANGE, contentRange);
             headers.add(HttpHeaders.ACCEPT_RANGES, "bytes");
@@ -137,16 +151,152 @@ public class BlobUrlController {
                             .build()
                             .toString());
 
+            // Determine content type; fall back to octet-stream
+            MediaType ct = org.springframework.http.MediaTypeFactory
+                    .getMediaType(resource)
+                    .orElse(MediaType.APPLICATION_OCTET_STREAM);
+
+            // Stream only the requested byte range to the client to avoid relying on ResourceRegion converters
+            java.io.InputStream is = resource.getInputStream();
+            try {
+                // Ensure we position the stream at the requested start
+                is.skipNBytes(start);
+            } catch (java.io.EOFException eof) {
+                // Defensive: if underlying stream shorter than expected, return 416
+                try {
+                    is.close();
+                } catch (java.io.IOException ignoreClose) {
+                    /* ignore */
+                }
+                return ResponseEntity.status(416)
+                        .header(HttpHeaders.CONTENT_RANGE, "bytes */" + fileSize)
+                        .build();
+            }
+
+            // Limit the stream to the requested number of bytes
+            org.apache.commons.io.input.BoundedInputStream bounded = new org.apache.commons.io.input.BoundedInputStream(is, count);
+            // Ensure closing this stream does not close the underlying stream prematurely (handled by container)
+            bounded.setPropagateClose(true);
+
+            org.springframework.core.io.InputStreamResource partialResource = new org.springframework.core.io.InputStreamResource(bounded) {
+                @Override
+                public String getFilename() {
+                    return blobUrlInfo.getFilename();
+                }
+            };
+
             return ResponseEntity.status(206)
-                    .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                    .contentType(ct)
                     .headers(headers)
                     .contentLength(count)
-                    .body(resource);
+                    .body(partialResource);
         } catch (IllegalArgumentException ex) {
             log.warn("Invalid range header: {}", rangeHeader);
             return ResponseEntity.status(416)
                     .header(HttpHeaders.CONTENT_RANGE, "bytes */" + fileSize)
                     .build();
+        } catch (java.io.IOException ioEx) {
+            log.error("I/O error processing range request: {}", ioEx.getMessage(), ioEx);
+            return ResponseEntity.internalServerError().build();
         }
+    }
+
+    @GetMapping("/health")
+    @Operation(summary = "Get blob URL system health status", 
+               description = "Returns comprehensive health information about the blob URL system")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Health status retrieved successfully"),
+        @ApiResponse(responseCode = "500", description = "Health check failed")
+    })
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<BlobUrlHealthService.HealthStatus> getHealthStatus() {
+        log.debug("Health status requested for blob URL system");
+        BlobUrlHealthService.HealthStatus health = blobUrlHealthService.performHealthCheck();
+        return ResponseEntity.ok(health);
+    }
+
+    @GetMapping("/stats")
+    @Operation(summary = "Get cleanup statistics", 
+               description = "Returns statistics about the cleanup system and current state")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Statistics retrieved successfully")
+    })
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<CleanupScheduler.CleanupStats> getCleanupStats() {
+        log.debug("Cleanup statistics requested");
+        CleanupScheduler.CleanupStats stats = cleanupScheduler.getCleanupStats();
+        return ResponseEntity.ok(stats);
+    }
+
+    @PostMapping("/admin/cleanup")
+    @Operation(summary = "Force immediate cleanup", 
+               description = "Triggers immediate cleanup of expired URLs and orphaned files")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Cleanup completed successfully"),
+        @ApiResponse(responseCode = "500", description = "Cleanup failed")
+    })
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<java.util.Map<String, Object>> forceCleanup() {
+        log.info("Manual cleanup requested by admin");
+        int cleanedCount = cleanupScheduler.forceCleanup();
+        
+        java.util.Map<String, Object> result = new java.util.HashMap<>();
+        result.put("cleanedCount", cleanedCount);
+        result.put("timestamp", java.time.OffsetDateTime.now());
+        result.put("message", "Cleanup completed successfully");
+        
+        return ResponseEntity.ok(result);
+    }
+
+    @DeleteMapping("/admin/{token}")
+    @Operation(summary = "Force cleanup of specific blob URL", 
+               description = "Manually removes a specific blob URL and its hard link")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Blob URL cleaned up successfully"),
+        @ApiResponse(responseCode = "404", description = "Blob URL not found"),
+        @ApiResponse(responseCode = "500", description = "Cleanup failed")
+    })
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<java.util.Map<String, Object>> forceCleanupByToken(
+            @Parameter(description = "Blob URL token to cleanup", required = true)
+            @PathVariable String token) {
+        String tokenPreview = token != null && token.length() > 8 ? token.substring(0, 8) + "…" : token;
+        log.info("Manual cleanup requested for token: {}", tokenPreview);
+        boolean success = cleanupScheduler.forceCleanupByToken(token);
+        
+        java.util.Map<String, Object> result = new java.util.HashMap<>();
+        result.put("success", success);
+        result.put("token", token);
+        result.put("timestamp", java.time.OffsetDateTime.now());
+        result.put("message", success ? "Blob URL cleaned up successfully" : "Blob URL not found or cleanup failed");
+        
+        return success ? ResponseEntity.ok(result) : ResponseEntity.notFound().build();
+    }
+
+    @GetMapping("/admin/filesystem-info")
+    @Operation(summary = "Get filesystem information", 
+               description = "Returns information about the filesystem where blob URLs are stored")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Filesystem information retrieved successfully")
+    })
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<FilesystemValidationService.FilesystemInfo> getFilesystemInfo() {
+        log.debug("Filesystem information requested");
+        FilesystemValidationService.FilesystemInfo info = filesystemValidationService.getFilesystemInfo();
+        return ResponseEntity.ok(info);
+    }
+
+    @PostMapping("/admin/validate-filesystem")
+    @Operation(summary = "Validate filesystem capabilities", 
+               description = "Performs validation of filesystem support for blob URL operations")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Filesystem validation completed"),
+        @ApiResponse(responseCode = "500", description = "Filesystem validation failed")
+    })
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<FilesystemValidationService.ValidationResult> validateFilesystem() {
+        log.info("Manual filesystem validation requested");
+        FilesystemValidationService.ValidationResult result = filesystemValidationService.validateFilesystem();
+        return ResponseEntity.ok(result);
     }
 }

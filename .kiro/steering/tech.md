@@ -73,3 +73,29 @@ copy .env.example .env
 - **demo** - Development with local file system (D:/demo/shared)
 - **test** - Testing environment (D:/test/shared)  
 - **production** - Synology NAS integration (/volume1/shared)
+
+## Development Guidelines
+
+### Time Handling
+- **Use UTC for internal time objects** - All internal time representations should use UTC to avoid timezone issues
+- Store and process times in UTC, convert to local time only for display purposes
+
+### Testing Standards
+- **Prefer AssertJ with AAA pattern** - Use AssertJ assertions with Arrange, Act, Assert structure
+- Add clear comments marking each section: `// Arrange`, `// Act`, `// Assert`
+- Each task should include at least unit or integration tests to validate functionality
+
+### Security Practices
+- **Do not expose sensitive data in error messages** - Remove passwords completely or show only partial tokens
+- **Validate all user input** - Implement proper input validation for all endpoints and services
+- Sanitize error messages to prevent information leakage
+
+### Code Quality
+- **Extract functions for repetitive code** - Reduce duplication by creating reusable utility functions
+- **Create focused, testable tasks** - Each task should produce visible, testable results
+- Prefer smaller, well-defined tasks over large complex implementations
+
+### Task Structure
+- **Reduced number of meaningful tasks** - Create tasks that show clear progress and results
+- Each task completion should demonstrate working functionality through tests
+- Focus on incremental, verifiable progress rather than large feature dumps
