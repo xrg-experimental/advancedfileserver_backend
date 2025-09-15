@@ -167,14 +167,20 @@ public class FileController {
     })
     @PreAuthorize("hasAnyRole('ADMIN', 'INTERNAL', 'EXTERNAL')")
     public ResponseEntity<Resource> download(HttpServletRequest request) {
-        String path = extractPathFromRequest(request);
-        Resource resource = fileService.loadAsResource(path);
-        
+        final String path = extractPathFromRequest(request);
+        if (path.isBlank()) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.BAD_REQUEST, "Missing download path");
+        }
+        final Resource resource = fileService.loadAsResource(path);
+        final org.springframework.http.ContentDisposition cd =
+                org.springframework.http.ContentDisposition.attachment()
+                        .filename(resource.getFilename(), java.nio.charset.StandardCharsets.UTF_8)
+                        .build();
         return ResponseEntity.ok()
-            .contentType(MediaType.APPLICATION_OCTET_STREAM)
-            .header(HttpHeaders.CONTENT_DISPOSITION, 
-                "attachment; filename=\"" + resource.getFilename() + "\"")
-            .body(resource);
+                .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .header(HttpHeaders.CONTENT_DISPOSITION, cd.toString())
+                .body(resource);
     }
 
     /* TODO: Map upload-size errors to 413 (Payload Too Large) — add handler in GlobalExceptionHandler.java
@@ -212,7 +218,8 @@ public class FileController {
         final String withinMapping =
                 (String) request.getAttribute(HandlerMapping.PATH_WITHIN_HANDLER_MAPPING_ATTRIBUTE);
         final String extracted = new AntPathMatcher().extractPathWithinPattern(pattern, withinMapping);
-        // Decode percent-encoded segments
-        return UriUtils.decode(extracted, StandardCharsets.UTF_8);
+        return extracted.isBlank()
+                ? ""
+                : UriUtils.decode(extracted, StandardCharsets.UTF_8);
     }
 }
