@@ -205,7 +205,10 @@ public class CleanupScheduler {
                 for (Path file : stream) {
                     if (Files.isRegularFile(file)) {
                         String filename = file.getFileName().toString();
-                        
+                        // Apply a token-name filter to reduce accidental deletions (e.g., dotfiles)
+                        if (!filename.matches("^[A-Za-z0-9_-]+$")) {
+                            continue;
+                        }
                         // Check if this file corresponds to a valid token
                         if (!validTokens.contains(filename)) {
                             try {
