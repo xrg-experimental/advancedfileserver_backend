@@ -84,7 +84,7 @@ public class FileController {
         return ResponseEntity.status(201).body(fileService.createDirectory(request.getPath()));
     }
 
-    @PostMapping("/delete")
+    @DeleteMapping("/delete")
     @Operation(summary = "Delete file/directory", 
                description = "Deletes a file or directory at the specified path")
     @ApiResponses(value = {
