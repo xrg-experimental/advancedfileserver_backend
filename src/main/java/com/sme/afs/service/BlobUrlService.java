@@ -318,15 +318,9 @@ public class BlobUrlService {
         }
 
         try {
-            // Read into memory to avoid OS-level file locking issues during cleanup (notably on Windows)
-            byte[] data = Files.readAllBytes(hardLinkPath);
-            org.springframework.core.io.ByteArrayResource resource = new org.springframework.core.io.ByteArrayResource(data) {
-                @Override
-                public String getFilename() {
-                    return blobUrl.getFilename();
-                }
-            };
-            log.info("Successfully validated token and prepared file for download: {}", token);
+            org.springframework.core.io.InputStreamResource resource =
+                    new org.springframework.core.io.InputStreamResource(Files.newInputStream(hardLinkPath));
+            log.info("Successfully validated token and prepared stream for download: {}", token);
             return resource;
         } catch (IOException e) {
             log.error("Failed to prepare file for download: {}", hardLinkPath, e);
