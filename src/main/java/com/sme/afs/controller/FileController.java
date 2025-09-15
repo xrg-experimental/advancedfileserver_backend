@@ -31,6 +31,29 @@ import org.springframework.web.util.UriUtils;
 
 import java.nio.charset.StandardCharsets;
 
+/* TODO: Fix DTO validation and harden FileService path handling (security‑critical)
+ * DTOs: PathRequest and MoveRequest have no validation — add @notblank, @SiZe(max=4096) and a
+ * pattern rejecting control chars; RenameRequest has @notblank but newName must forbid path
+ * separators (no '/' or ''). Files: src/main/java/com/sme/afs/dto/PathRequest.java,
+ * RenameRequest.java, MoveRequest.java.
+ * <p>
+ * FileService: getAbsolutePath() + validatePath() rely on normalize().startsWith(rootLocation)
+ * (catches “..”) but do not canonicalize for most ops — symlink/TOCTOU escapes are possible.
+ * Canonicalize (toRealPath) and assert realPath.startsWith(rootLocation) before any filesystem
+ * read/write; re-check after open/atomic ops. Check callers: createDirectory, delete, listDirectory,
+ * move, rename, store. File: src/main/java/com/sme/afs/service/FileService.java (getAbsolutePath,
+ * validatePath and callers).
+ * <p>
+ * Blob URL handling: BlobUrlService/BlobUrlController accept/handle absolute paths with fragile
+ * string checks
+ * (TODO present). Reject or canonicalize+constrain absolute paths at controller boundary for unprivileged
+ *   callers and assert canonical path is under the shared root before creating hard links.
+ *   Files: src/main/java/com/sme/afs/service/BlobUrlService.java,
+ *          src/main/java/com/sme/afs/controller/BlobUrlController.java.
+ * <p>
+ * Immediate practical risk: missing DTO constraints permit null/empty paths -> NPEs when
+ * controllers call FileService.getAbsolutePath.
+ */
 @RestController
 @RequestMapping("/files")
 @RequiredArgsConstructor
