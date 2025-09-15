@@ -154,6 +154,16 @@ public class FileController {
             .body(resource);
     }
 
+    /* TODO: Map upload-size errors to 413 (Payload Too Large) — add handler in GlobalExceptionHandler.java
+     *
+     * application.yml already sets spring.servlet.multipart.max-file-size and max-request-size = 100MB,
+     * but src/main/java/com/sme/afs/exception/GlobalExceptionHandler.java has no handler for
+     * MaxUploadSizeExceededException/MultipartException and will fall back to the generic 500 handler.
+     * Add an @ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException.class)
+     * (and optionally MultipartException) in GlobalExceptionHandler to return HTTP 413 with the
+     * ProblemResponse body (reuse or add an appropriate ErrorCode for "file too large"); ensure the
+     * handler logs safely and does not leak file contents or sensitive info.
+     */
     @PostMapping(path = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(summary = "Upload file", 
                description = "Uploads a file to the specified path")
